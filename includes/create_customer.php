@@ -43,7 +43,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($checkStmt->num_rows > 0) {
         $_SESSION['error'] = "Customer with this name or email already exists.";
-        //echo "Customer with this name or email already exists.";
     } else {
         $stmt = $conn->prepare("
             INSERT INTO customers (
