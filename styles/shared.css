@@ -2,3 +2,8 @@
     color: grey;
     font-size: 12px;
 }
+
+.logout-btn {
+    display: flex;
+    justify-content: flex-end;
+}
