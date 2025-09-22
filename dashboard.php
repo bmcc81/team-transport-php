@@ -15,6 +15,7 @@ if (!isset($_SESSION['user_id'])) {
 </head>
 <body class="p-4">
   <h1>Welcome to your dashboard!</h1>
+  <a href="views/create_customer_view.php" class="btn btn-success">Create Customer</a>
   <a href="views/logout.php" class="btn btn-danger">Logout</a>
 </body>
 </html>

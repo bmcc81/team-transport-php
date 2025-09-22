@@ -13,9 +13,9 @@ if ($conn->connect_error) {
     die("DB connection failed: " . $conn->connect_error);
 }
 
-$username = "Melissa";
-$email = "melissa@gmail.com";
-$plainPassword = "melissa123!"; 
+$username = "admin";
+$email = "bmcc81@gmail.com";
+$plainPassword = "admin123!"; 
 
 $hashedPassword = password_hash($plainPassword, PASSWORD_DEFAULT);
 
