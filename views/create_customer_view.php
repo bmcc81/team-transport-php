@@ -1,6 +1,5 @@
 <!-- INDEX.php -->
-<?php session_start(); 
-echo $_SESSION['username']; // outputs the logged-in username ?>
+<?php session_start();?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,6 +10,8 @@ echo $_SESSION['username']; // outputs the logged-in username ?>
 </head>
 <body class="bg-light">
 
+<a href="../dashboard.php" class="btn btn-success">Back</a>  
+
 <div class="container d-flex justify-content-center align-items-center">
   <div class="card shadow-lg p-4" style="max-width: 400px; width: 100%;">
     <h3 class="text-center mb-4">Create Customer Form</h3>
@@ -20,6 +21,7 @@ echo $_SESSION['username']; // outputs the logged-in username ?>
         <?= $_SESSION['error']; unset($_SESSION['error']); ?>
       </div>
     <?php endif; ?>
+
 
     <form method="POST" action="../includes/create_customer.php">
         <div class="mb-3">

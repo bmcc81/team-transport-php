@@ -14,8 +14,7 @@ if (!isset($_SESSION['user_id'])) {
   <link href="./styles/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="p-4">
-  <h1>Welcome to your dashboard!</h1>
-
+  <h1><?php echo $_SESSION['username'];?>'s Client Dashboard</h1>
   <table class="table table-striped table-hover">
     <thead>
       <tr>
