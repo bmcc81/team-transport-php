@@ -1,15 +1,21 @@
 {
-  "name": "Team Transport",
-  "short_name": "TeamTransport",
-  "start_url": "/",
+  "name": "My WebSite",
+  "short_name": "MySite",
+  "start_url": "./index.php/MyWebPage",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
   "icons": [
-    {
-      "src": "/icons/favicon-32x32.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    }
-  ]
+  {
+    "src": "/MyWebSite/images/icons/favicon-32x32.png",
+    "sizes": "32x32",
+    "type": "image/png"
+  },
+  {
+    "src": "/MyWebSite/images/icons/favicon-16x16.png",
+    "sizes": "16x16",
+    "type": "image/png"
+  }
+]
+
 }
