@@ -3,12 +3,29 @@
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
+    header("Location: index.php");
     exit;
 }
 
 include "includes/user_dashboard_customers.php";
 ?>
+
+<?php if (isset($_SESSION['success'])): ?>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <?= htmlspecialchars($_SESSION['success']); ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <?php unset($_SESSION['success']); ?>
+<?php endif; ?>
+
+<?php if (isset($_SESSION['error'])): ?>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <?= htmlspecialchars($_SESSION['error']); ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <?php unset($_SESSION['error']); ?>
+<?php endif; ?>
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -21,7 +38,10 @@ include "includes/user_dashboard_customers.php";
     <a href="views/logout.php" class="btn btn-danger">Logout</a>
   </div>
 
-  <h1><?= htmlspecialchars($_SESSION['username']); ?>'s Client Dashboard</h1>
+  <header class="py-3 mb-4 border-bottom"> <div class="flex-wrap justify-content"> 
+    <h1><?= htmlspecialchars(ucfirst($_SESSION['username'])); ?>'s Client Dashboard</h1>
+  </header>
+
 
   <?php if (isset($_GET['deleted'])): ?>
     <div class="alert alert-success">Customer deleted successfully.</div>

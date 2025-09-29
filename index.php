@@ -7,6 +7,8 @@
   <meta charset="UTF-8">
   <title>Team Transport - Login</title>
     <link href="./styles/css/bootstrap.min.css" rel="stylesheet">
+    <script src="./styles/dist/js/bootstrap.bundle.min.js"></script>
+
     <!-- Manifest -->
     <link rel="manifest" href="/MyWebSite/site.webmanifest">
 

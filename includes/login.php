@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($username) || empty($password)) {
         $_SESSION['error'] = "Please enter both username and password.";
-        header("Location: ../login.php");
+        header("Location: ../index.php");
         exit();
     }
 
@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         } else {
             $_SESSION['error'] = "Incorrect password.";
-            header("Location: ../login.php");
+            header("Location: ../index.php");
             exit();
         }
     } else {
