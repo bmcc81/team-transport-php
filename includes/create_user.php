@@ -1,6 +1,13 @@
 <?php
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+// ini_set('display_errors', 1);
+// error_reporting(E_ALL);
+session_start();
+
+if (!isset($_SESSION['user_id'])) {
+    die("You must be logged in to create a customer.");
+}
+
+$loggedInUserId = $_SESSION['user_id'];
 
 $host = "localhost";
 $user = "root";
@@ -13,32 +20,43 @@ if ($conn->connect_error) {
     die("DB connection failed: " . $conn->connect_error);
 }
 
-$username = "tom";
-$email = "tom@gmail.com";
-$plainPassword = "tom123"; 
+$username = "";
+$email = "";
+$plainPassword = ""; 
 
 $hashedPassword = password_hash($plainPassword, PASSWORD_DEFAULT);
 
-// Optional: check if email exists
-// $checkStmt = $conn->prepare("SELECT id FROM users WHERE email=?");
-$checkStmt = $conn->prepare("SELECT id FROM users WHERE username=?");
-$checkStmt->bind_param("s", $username);
-$checkStmt->execute();
-$checkStmt->store_result();
-
-if ($checkStmt->num_rows > 0) {
-    echo "User Name already exists.";
-} else {
-    $stmt = $conn->prepare("INSERT INTO users (username, email, pwd) VALUES (?, ?, ?)");
-    $stmt->bind_param("sss", $username, $email, $hashedPassword);
-
-    if ($stmt->execute()) {
-        echo "User created successfully!";
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['username'], $_POST['email'], $_POST['create_password'])) {
+        $username = trim($_POST['username']);
+        $email = trim($_POST['email']);
+        $plainPassword = $_POST['create_password'];
+        $hashedPassword = password_hash($plainPassword, PASSWORD_DEFAULT);
     } else {
-        echo "Error: " . $stmt->error;
+        $_SESSION['error'] = "Please fill in all required fields";
+        // die("Missing required fields.");
     }
-    $stmt->close();
-}
+    // Optional: check if email exists
+    // $checkStmt = $conn->prepare("SELECT id FROM users WHERE email=?");
+    $checkStmt = $conn->prepare("SELECT id FROM users WHERE username=?");
+    $checkStmt->bind_param("s", $username);
+    $checkStmt->execute();
+    $checkStmt->store_result();
 
-$checkStmt->close();
-$conn->close();
+    if ($checkStmt->num_rows > 0) {
+        echo "User Name already exists.";
+    } else {
+        $stmt = $conn->prepare("INSERT INTO users (username, email, pwd) VALUES (?, ?, ?)");
+        $stmt->bind_param("sss", $username, $email, $hashedPassword);
+
+        if ($stmt->execute()) {
+            echo "User created successfully!";
+        } else {
+            echo "Error: " . $stmt->error;
+        }
+        $stmt->close();
+    }
+
+    $checkStmt->close();
+    $conn->close();
+}
