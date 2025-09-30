@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         empty($customerPhone)
     ) {
         $_SESSION['error'] = "Please fill in all required fields";
-        header("Location: ../create_customer_view.php");
+        header(header: "Location: ../create_customer_view.php");
         exit;
     }
 
