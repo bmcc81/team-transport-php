@@ -100,5 +100,9 @@ include "includes/user_dashboard_customers.php";
   </table>
 
   <a href="views/create_customer_view.php" class="btn btn-success">Create Customer</a>
+  <?php if (isset($_SESSION['username']) && $_SESSION['username'] === 'admin'): ?>
+      <a href="views/create_user_by_admin_view.php" class="btn btn-primary">Create user</a>
+  <?php endif; ?>
+  
 </body>
 </html>
