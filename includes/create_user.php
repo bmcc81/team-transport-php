@@ -44,15 +44,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $checkStmt->store_result();
 
     if ($checkStmt->num_rows > 0) {
-        echo "User Name already exists.";
+        $_SESSION['error'] = "Error: User Name already exists.";
+        header("Location: ../views/create_user_by_admin_view.php");
     } else {
         $stmt = $conn->prepare("INSERT INTO users (username, email, pwd) VALUES (?, ?, ?)");
         $stmt->bind_param("sss", $username, $email, $hashedPassword);
 
         if ($stmt->execute()) {
-            echo "User created successfully!";
+            $_SESSION['success'] = "User created successfully!";
+            header("Location: ../dashboard.php");
         } else {
-            echo "Error: " . $stmt->error;
+            $_SESSION['error'] = "Error: " . $stmt->error;
+            header("Location: ../views/create_user_by_admin_view.php");
         }
         $stmt->close();
     }
