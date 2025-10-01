@@ -1,6 +1,7 @@
 <?php
 session_start();
 
+
 if (!isset($_SESSION['user_id'])) {
     die("You must be logged in to create a customer.");
 }
@@ -90,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($stmt->execute()) {
             $_SESSION['success'] = "Customer created successfully!";
             header("Location: ../dashboard.php");
-            exit;
+                exit;
         } else {
             $_SESSION['error'] = "Error: " . $stmt->error;
             header("Location: ../views/create_customer_view.php");

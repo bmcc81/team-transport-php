@@ -32,7 +32,7 @@
     <form method="POST" action="includes/login.php">
         <div class="mb-3">
             <label for="username" class="form-label">Username</label>
-            <input type="text" class="form-control" id="username" name="username" required>
+            <input type="text" class="form-control" id="username" name="username" autocomplete="on" required>
         </div>
 
         <div class="mb-3">

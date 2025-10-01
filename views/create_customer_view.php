@@ -1,5 +1,5 @@
 <!-- INDEX.php -->
-<?php session_start(); ?>
+<?php session_start();?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -43,12 +43,14 @@
         </div>
 
             <div class="mb-3">
-                <label for="customer_internal_handler_name" class="form-label">
+                <label for="username" class="form-label">
                 Customer Internal Handler Name <span class="text-danger">(Required)</span>
                 </label>
                 <input 
                     type="text" 
                     class="form-control" 
+                    id="username"
+                    autocomplete="on"
                     value="<?= htmlspecialchars($_SESSION['username'] ?? '') ?>" 
                     disabled
                 >
