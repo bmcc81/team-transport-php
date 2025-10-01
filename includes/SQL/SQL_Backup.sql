@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Sep 29, 2025 at 05:57 PM
+-- Generation Time: Oct 01, 2025 at 02:33 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -44,7 +44,10 @@ INSERT INTO `users` (`id`, `username`, `pwd`, `email`, `created_at`, `role`) VAL
 (7, 'testuser', '$2y$10$SQ1BvSmj0k/iaQmDR1CpUOJXF4bsXlfUfsbgmqj/6H66Cwh0S5WOy', 'some_email@gmail.com', '2025-09-16 12:01:46', 'user'),
 (8, 'Brandon', '$2y$10$FiBy0DEl3IFhWHmwWpwVOe32DpwwZPs6SF2vi89shnu3awKDkFYrC', 'bmcc81@gmail.com', '2025-09-16 12:02:23', 'user'),
 (9, 'Melissa', '$2y$10$plfozzDp.TmhBVTVgkxxJuBbfr44JhjDOt/Icyd3lVWX27R0/bN4u', 'melissa@gmail.com', '2025-09-16 12:02:55', 'user'),
-(10, 'admin', '$2y$10$XY0c05j4qtNQbhgKrq02iOnu3.9.Sk1BCky/WhJmQvWJ76TVp38VG', 'bmcc81@gmail.com', '2025-09-18 16:00:22', 'admin');
+(10, 'admin', '$2y$10$XY0c05j4qtNQbhgKrq02iOnu3.9.Sk1BCky/WhJmQvWJ76TVp38VG', 'bmcc81@gmail.com', '2025-09-18 16:00:22', 'admin'),
+(11, 'Tom', '$2y$10$X89422LRfjCFYMHaXE4Nr.TIJto4NC60.WV2/HMX3.Jx/ZMvi9esS', 'tom@gmail.com', '2025-09-29 12:01:51', 'user'),
+(13, 'Bob', '$2y$10$vHkFzQZoV6qbJRJ/9XEry.p.cIj13vgbjNJD1cQ7LDktmcpdDAIea', 'bob@gmail.com', '2025-09-30 14:16:27', 'user'),
+(14, 'Charlie', '$2y$10$OSZUk/PkoWLUpy3ENSX64OcPFM.v8wb3rXD1hoOUMd.1ou.fVdFXa', 'charlie@gmail.com', '2025-09-30 15:36:56', 'user');
 
 --
 -- Triggers `users`
@@ -77,7 +80,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
