@@ -42,23 +42,33 @@
             <input type="text" class="form-control" id="customer_company_name" name="customer_company_name" required>
         </div>
 
-            <div class="mb-3">
-                <label for="username" class="form-label">
+        <div class="mb-3">
+            <label for="username" class="form-label">
                 Customer Internal Handler Name <span class="text-danger">(Required)</span>
-                </label>
+            </label>
+
+            <?php if ( $_SESSION['username'] !== 'admin'): ?>
                 <input 
                     type="text" 
                     class="form-control" 
                     id="username"
                     autocomplete="on"
                     value="<?= htmlspecialchars($_SESSION['username'] ?? '') ?>" 
-                    disabled
-                >
+                    disabled>
                 <input 
                     type="hidden" 
                     name="customer_internal_handler_name" 
-                    value="<?= htmlspecialchars($_SESSION['username'] ?? '') ?>"
->
+                    value="<?= htmlspecialchars($_SESSION['username'] ?? '') ?>">
+            <?php else: ?>
+                <input 
+                    type="text" 
+                    class="form-control" 
+                    id="username"
+                    autocomplete="on"
+                    value="">
+            <?php endif; ?>
+        </div>
+
         <div class="mb-3">
             <label for="customer_contact_first_name" class="form-label">
               Customer Contact First Name <span class="text-danger">(Required)</span>
