@@ -20,11 +20,15 @@
       }
     },
     {
-      "name": "Listen for Xdebug",
+      "name": "Listen for XDebug",
       "type": "php",
       "request": "launch",
       "port": 9003,
-      "runtimeExecutable": "C:/xampp/php/php.exe"
+      "pathMappings": {
+          "/": "${workspaceFolder}"
+      },
+      "hostname": "127.0.0.1",
+      "log": true
     }
   ]
 }
