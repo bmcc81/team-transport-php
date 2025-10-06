@@ -8,7 +8,7 @@ if (!isset($_SESSION['username'])) {
 }
 
 include "includes/user_dashboard_customers.php";
-// include "includes/customers_update.php";
+
 ?>
 
 <?php if (isset($_SESSION['success'])): ?>
