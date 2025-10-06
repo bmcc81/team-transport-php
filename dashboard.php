@@ -8,6 +8,7 @@ if (!isset($_SESSION['username'])) {
 }
 
 include "includes/user_dashboard_customers.php";
+// include "includes/customers_update.php";
 ?>
 
 <?php if (isset($_SESSION['success'])): ?>
@@ -87,6 +88,10 @@ include "includes/user_dashboard_customers.php";
               <form method="post" action="includes/delete_customer.php" onsubmit="return confirm('Are you sure you want to delete this customer?');">
                   <input type="hidden" name="id" value="<?= htmlspecialchars($customer['id']); ?>">
                   <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+              </form>
+              <form method="GET" action="includes/customers_update.php">
+                  <input type="hidden" name="id" value="<?= htmlspecialchars($customer['id']); ?>">
+                  <button type="submit" class="btn btn-primary btn-sm">Update</button>
               </form>
             </td>
           </tr>

@@ -6,6 +6,8 @@ if (!isset($_SESSION['user_id'])) {
     die("You must be logged in to create a customer.");
 }
 
+require_once __DIR__ . '/validation.php';
+
 $loggedInUserId = $_SESSION['user_id'];
 
 // Connect to MySQL
@@ -94,6 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
         } else {
             $_SESSION['error'] = "Error: " . $stmt->error;
+            $_SESSION['old'] = $_POST;   // store user’s input
             header("Location: ../views/create_customer_view.php");
             exit;
         }
