@@ -62,4 +62,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
 // If direct access without POST
 $_SESSION['error'] = "Invalid request.";
 header("Location: ../dashboard.php");
-exit
+exit();
