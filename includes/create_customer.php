@@ -1,7 +1,6 @@
 <?php
 session_start();
 
-
 if (!isset($_SESSION['user_id'])) {
     die("You must be logged in to create a customer.");
 }
@@ -9,8 +8,9 @@ if (!isset($_SESSION['user_id'])) {
 require_once __DIR__ . '/validation.php';
 
 $loggedInUserId = $_SESSION['user_id'];
+$userRole = $_SESSION['role'] ?? 'driver';
 
-// Connect to MySQL
+// Database connection
 $conn = new mysqli("localhost", "root", "", "team_transport");
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $customerFax = trim($_POST['customer_fax'] ?? '');
     $customerWebsite = trim($_POST['customer_website'] ?? '');
 
-    // Validate required fields
+    // ✅ Validate required fields
     if (
         empty($customerCompanyName) || empty($customerInternalHandlerName) ||
         empty($customerContactFirstName) || empty($customerContactLastName) ||
@@ -40,19 +40,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         empty($customerContactZipOrPostalCode) || empty($customerContactCountry) ||
         empty($customerPhone)
     ) {
-        $_SESSION['error'] = "Please fill in all required fields";
-        header(header: "Location: ../create_customer_view.php");
-        exit;
+        $_SESSION['error'] = "Please fill in all required fields.";
+        header("Location: ../views/create_customer_view.php");
+        exit();
     }
 
-    // Validate email
+    // ✅ Validate email format
     if (!filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
         $_SESSION['error'] = "Invalid email format.";
         header("Location: ../views/create_customer_view.php");
-        exit;
+        exit();
     }
 
-    // Check for duplicates
+    // ✅ Check for duplicates
     $checkStmt = $conn->prepare("SELECT id FROM customers WHERE customer_company_name=? OR customer_email=?");
     $checkStmt->bind_param("ss", $customerCompanyName, $customerEmail);
     $checkStmt->execute();
@@ -61,44 +61,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($checkStmt->num_rows > 0) {
         $_SESSION['error'] = "Customer with this name or email already exists.";
         header("Location: ../views/create_customer_view.php");
-        exit;
-    } else {
-        $stmt = $conn->prepare("
-            INSERT INTO customers (
-                customer_company_name, customer_internal_handler_name, customer_contact_first_name,
-                customer_contact_last_name, customer_email, customer_contact_address, customer_contact_city,
-                customer_contact_state_or_province, customer_contact_zip_or_postal_code, customer_contact_country,
-                customer_phone, customer_fax, customer_website, user_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-
-        $stmt->bind_param(
-            "sssssssssssssi",
-            $customerCompanyName,
-            $customerInternalHandlerName,
-            $customerContactFirstName,
-            $customerContactLastName,
-            $customerEmail,
-            $customerContactAddress,
-            $customerContactCity,
-            $customerContactStateOrProvince,
-            $customerContactZipOrPostalCode,
-            $customerContactCountry,
-            $customerPhone,
-            $customerFax,
-            $customerWebsite,
-            $loggedInUserId
-        );
-
-        if ($stmt->execute()) {
-            $_SESSION['success'] = "Customer created successfully!";
-            header("Location: ../dashboard.php");
-                exit;
-        } else {
-            $_SESSION['error'] = "Error: " . $stmt->error;
-            $_SESSION['old'] = $_POST;   // store user’s input
-            header("Location: ../views/create_customer_view.php");
-            exit;
-        }
+        exit();
     }
+
+    // ✅ Insert new customer
+    $stmt = $conn->prepare("
+        INSERT INTO customers (
+            customer_company_name, customer_internal_handler_name, customer_contact_first_name,
+            customer_contact_last_name, customer_email, customer_contact_address, customer_contact_city,
+            customer_contact_state_or_province, customer_contact_zip_or_postal_code, customer_contact_country,
+            customer_phone, customer_fax, customer_website, user_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+
+    $stmt->bind_param(
+        "sssssssssssssi",
+        $customerCompanyName,
+        $customerInternalHandlerName,
+        $customerContactFirstName,
+        $customerContactLastName,
+        $customerEmail,
+        $customerContactAddress,
+        $customerContactCity,
+        $customerContactStateOrProvince,
+        $customerContactZipOrPostalCode,
+        $customerContactCountry,
+        $customerPhone,
+        $customerFax,
+        $customerWebsite,
+        $loggedInUserId
+    );
+
+    if ($stmt->execute()) {
+        // ✅ Log the action
+        $customerId = $stmt->insert_id;
+        $log = $conn->prepare("
+            INSERT INTO customer_activity_log (user_id, customer_id, action, details)
+            VALUES (?, ?, 'CREATE', 'Customer created successfully')
+        ");
+        $log->bind_param("ii", $loggedInUserId, $customerId);
+        $log->execute();
+        $log->close();
+
+        $_SESSION['success'] = "Customer created successfully!";
+        header("Location: ../dashboard.php");
+        exit();
+    } else {
+        $_SESSION['error'] = "Database error: " . $stmt->error;
+        $_SESSION['old'] = $_POST; // Preserve form data
+        header("Location: ../views/create_customer_view.php");
+        exit();
+    }
+
+    $stmt->close();
+    $checkStmt->close();
+    $conn->close();
 }

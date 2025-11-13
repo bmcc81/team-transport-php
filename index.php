@@ -19,7 +19,10 @@
     
     <?php if (isset($_SESSION['error'])): ?>
       <div class="alert alert-danger">
-        <?= $_SESSION['error']; unset($_SESSION['error']); ?>
+        <div class="alert alert-danger">
+      <?= htmlspecialchars($_SESSION['error'], ENT_QUOTES, 'UTF-8'); unset($_SESSION['error']); ?>
+    </div>
+
       </div>
     <?php endif; ?>
 
@@ -40,6 +43,14 @@
         </div>
 
       <button type="submit" class="btn btn-primary w-100">Login</button>
+
+      <!-- Later when I create a logout or registration page, you can show success messages the same way -->
+      <?php if (isset($_SESSION['success'])): ?>
+        <div class="alert alert-success">
+          <?= htmlspecialchars($_SESSION['success']); unset($_SESSION['success']); ?>
+        </div>
+      <?php endif; ?>
+      
     </form>
   </div>
 </div>

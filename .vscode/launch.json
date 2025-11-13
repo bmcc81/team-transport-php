@@ -1,34 +1,19 @@
 {
   "version": "0.2.0",
   "configurations": [
-      {
-        "name": "Listen for Xdebug",
-        "type": "php",
-        "request": "launch",
-        "port": 9003,
-        "pathMappings": {
-            "C:/xampp/htdocs/MyWebSite": "${workspaceFolder}"
-        },
-        "log": true
-      }
-    // ,
-    // {
-    //   "name": "Launch PHP Built-in Server and Debug",
-    //   "type": "php",
-    //   "request": "launch",
-    //   "runtimeExecutable": "C:/xampp/php/php.exe",
-    //   "runtimeArgs": [
-    //     "-S",
-    //     "localhost:8000",
-    //     "-t",
-    //     "${workspaceFolder}"
-    //   ],
-    //   "cwd": "${workspaceFolder}",
-    //   "port": 9003,
-    //   "serverReadyAction": {
-    //     "action": "openExternally",
-    //     "pattern": "Listening on http://localhost:8000"
-    //   }
-    // }
+    {
+      "name": "Listen for Xdebug (Apache :8080)",
+      "type": "php",
+      "request": "launch",
+      "port": 9003,
+      "log": true,
+      "hostname": "127.0.0.1",
+      "pathMappings": {
+        "C:\\xampp\\htdocs\\TeamTransport": "${workspaceFolder}"
+      },
+      "ignore": [
+        "**/vendor/**/*.php"
+      ]
+    }
   ]
 }

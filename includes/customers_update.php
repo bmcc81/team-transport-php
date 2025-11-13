@@ -1,16 +1,20 @@
 <?php
 session_start();
 
-if (!isset($_SESSION['username'])) {
-    die("You must be logged in.");
+if (!isset($_SESSION['user_id'])) {
+    $_SESSION['error'] = "You must be logged in to manage customers.";
+    header("Location: ../index.php");
+    exit();
 }
 
-if (!isset($_GET['id'])) {
-    die("No ID provided.");
+if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+    $_SESSION['error'] = "Invalid customer ID.";
+    header("Location: ../dashboard.php");
+    exit();
 }
 
-$id = (int) $_GET['id'];
+$customerId = (int) $_GET['id'];
 
-// Simply redirect with id in query string
-header("Location: ../views/create_customer_view.php?id=" . $id);
-exit;
+// Redirect to the edit form
+header("Location: ../views/create_customer_view.php?id=" . $customerId);
+exit();
