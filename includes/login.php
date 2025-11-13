@@ -1,4 +1,11 @@
 <?php
+session_start();
+
+// If a user is already logged in, prevent them from seeing the login form again
+if (isset($_SESSION['user_id'])) {
+    header("Location: ../dashboard.php");
+    exit();
+}
 
 // Database connection
 $host = "localhost";
@@ -23,22 +30,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-    // Prepare statement to get user by username
-    $stmt = $conn->prepare("SELECT id, username, pwd FROM users WHERE username=?");
+    // Fetch role too
+    $stmt = $conn->prepare("SELECT id, username, pwd, role FROM users WHERE username=?");
     $stmt->bind_param("s", $username);
     $stmt->execute();
     $stmt->store_result();
 
     if ($stmt->num_rows === 1) {
-        $stmt->bind_result($id, $user, $hashedPwd);
+        $stmt->bind_result($id, $user, $hashedPwd, $role);
         $stmt->fetch();
 
         // Verify password
         if (password_verify($password, $hashedPwd)) {
-            // Password correct, start session
+            // ✅ Store all user info in session
             $_SESSION['user_id'] = $id;
             $_SESSION['username'] = $user;
-            header("Location: ../dashboard.php"); // Redirect to a protected page
+            $_SESSION['role'] = $role;
+
+            header("Location: ../dashboard.php");
             exit();
         } else {
             $_SESSION['error'] = "Incorrect password.";
@@ -47,9 +56,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } else {
         $_SESSION['error'] = "Username not found.";
-        header("Location: index.php");
+        header("Location: ../index.php");
         exit();
     }
+
+    $stmt->close();
 }
 
 $conn->close();

@@ -7,3 +7,34 @@
     display: flex;
     justify-content: flex-end;
 }
+
+.modal-content {
+    border-radius: 0.75rem;
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+}
+.modal-header.bg-danger {
+    background: linear-gradient(90deg, #c82333, #dc3545);
+}
+
+.toast {
+  border-radius: 0.75rem;
+  font-size: 0.95rem;
+  opacity: 0.95;
+}
+.toast-body {
+  font-weight: 500;
+}
+
+.toast {
+  border-radius: 0.75rem;
+  font-size: 0.95rem;
+  opacity: 0.95;
+  transition: all 0.4s ease-in-out;
+}
+.toast-body {
+  font-weight: 500;
+}
+.text-bg-info {
+  background-color: #0dcaf0 !important;
+  color: #082032 !important;
+}

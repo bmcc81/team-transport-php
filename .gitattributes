@@ -1,0 +1,19 @@
+# ================================
+# Git line-ending normalization
+# Windows (XAMPP) + Linux servers
+# ================================
+
+# PHP and web files - always use LF in repo
+*.php   text eol=lf
+*.html  text eol=lf
+*.css   text eol=lf
+*.js    text eol=lf
+*.sql   text eol=lf
+*.json  text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.md    text eol=lf
+*.txt   text eol=lf
+
+# Optional: treat all other text files as LF by default
+* text=auto eol=lf
