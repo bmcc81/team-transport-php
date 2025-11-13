@@ -1,2 +1,2 @@
-# team-transport-php
-Team Transport Management System done in PHP and MySQL 
+#Team Transport — Transport Management System (PHP/MySQL)
+Team Transport is a web-based transport management system built with PHP, MySQL, and Bootstrap to simplify and digitize logistics operations. The platform enables administrators to manage users, customers, and transport records efficiently through a secure login system and intuitive dashboard. Features include user role management (admin, driver, customer), trip and delivery tracking, and integrated database operations for real-time data access. Designed with scalability and maintainability in mind, the project demonstrates clean backend logic, organized SQL schema design, and modular front-end integration for future expansion.
