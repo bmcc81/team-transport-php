@@ -17,8 +17,22 @@ if ($conn->connect_error) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Get the handler user ID from dropdown
+    $user_id = intval($_POST['user_id'] ?? 0);
+
+    // Fetch the handler’s username for customer_internal_handler_name
+    $customerInternalHandlerName = '';
+    if ($user_id > 0) {
+        $handlerStmt = $conn->prepare("SELECT username FROM users WHERE id = ?");
+        $handlerStmt->bind_param("i", $user_id);
+        $handlerStmt->execute();
+        $handlerStmt->bind_result($customerInternalHandlerName);
+        $handlerStmt->fetch();
+        $handlerStmt->close();
+    }
+
+    // Sanitize remaining inputs
     $customerCompanyName = trim($_POST['customer_company_name'] ?? '');
-    $customerInternalHandlerName = trim($_POST['customer_internal_handler_name'] ?? '');
     $customerContactFirstName = trim($_POST['customer_contact_first_name'] ?? '');
     $customerContactLastName = trim($_POST['customer_contact_last_name'] ?? '');
     $customerEmail = trim($_POST['customer_email'] ?? '');
@@ -60,22 +74,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($checkStmt->num_rows > 0) {
         $_SESSION['error'] = "Customer with this name or email already exists.";
+        $checkStmt->close();
         header("Location: ../views/create_customer_view.php");
         exit();
     }
+    $checkStmt->close();
 
     // ✅ Insert new customer
     $stmt = $conn->prepare("
         INSERT INTO customers (
-            customer_company_name, customer_internal_handler_name, customer_contact_first_name,
-            customer_contact_last_name, customer_email, customer_contact_address, customer_contact_city,
-            customer_contact_state_or_province, customer_contact_zip_or_postal_code, customer_contact_country,
-            customer_phone, customer_fax, customer_website, user_id
+            user_id,
+            customer_company_name,
+            customer_internal_handler_name,
+            customer_contact_first_name,
+            customer_contact_last_name,
+            customer_email,
+            customer_contact_address,
+            customer_contact_city,
+            customer_contact_state_or_province,
+            customer_contact_country,
+            customer_contact_zip_or_postal_code,
+            customer_phone,
+            customer_fax,
+            customer_website
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
+    if (!$stmt) {
+        $_SESSION['error'] = "SQL error: " . $conn->error;
+        header("Location: ../views/create_customer_view.php");
+        exit();
+    }
+
     $stmt->bind_param(
-        "sssssssssssssi",
+        "isssssssssssss",
+        $user_id,
         $customerCompanyName,
         $customerInternalHandlerName,
         $customerContactFirstName,
@@ -84,12 +117,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $customerContactAddress,
         $customerContactCity,
         $customerContactStateOrProvince,
-        $customerContactZipOrPostalCode,
         $customerContactCountry,
+        $customerContactZipOrPostalCode,
         $customerPhone,
         $customerFax,
-        $customerWebsite,
-        $loggedInUserId
+        $customerWebsite
     );
 
     if ($stmt->execute()) {
@@ -108,12 +140,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     } else {
         $_SESSION['error'] = "Database error: " . $stmt->error;
-        $_SESSION['old'] = $_POST; // Preserve form data
+        $_SESSION['old'] = $_POST;
         header("Location: ../views/create_customer_view.php");
         exit();
     }
 
     $stmt->close();
-    $checkStmt->close();
     $conn->close();
 }
+?>
