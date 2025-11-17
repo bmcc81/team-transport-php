@@ -27,3 +27,8 @@ Hosted on Rasberry Pi Web Server:
 📡 Real-Time Discord Dashboard
 
 Rasberry Pi now reports like a real cloud server.  AWS ;)
+
+✔ Auto-backs up SQL
+✔ Auto-backs up website files
+✔ Uploads all backups securely to Google Drive
+✔ Has Cloudflare Tunnel, NGINX, monitoring, alerts, system checks — EVERYTHING fully automated.
