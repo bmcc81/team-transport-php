@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../services/config.php';
 session_start();
 
 // Only allow admins
@@ -9,16 +10,6 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 }
 
 $adminId = $_SESSION['user_id']; // ✅ store who created the new user
-
-$host = "localhost";
-$user = "root";
-$pass = "";
-$db   = "team_transport";
-
-$conn = new mysqli($host, $user, $pass, $db);
-if ($conn->connect_error) {
-    die("DB connection failed: " . $conn->connect_error);
-}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fullName = trim($_POST['full_name'] ?? '');

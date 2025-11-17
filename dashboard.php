@@ -72,9 +72,10 @@ include "includes/user_dashboard_customers.php";
               <td><?= htmlspecialchars($customer['customer_fax']); ?></td>
               <td><?= htmlspecialchars($customer['customer_website']); ?></td>
               <td><?= htmlspecialchars($customer['created_at']); ?></td>
+
               <td class="text-nowrap">
                 <!-- Update Button -->
-                <form method="GET" action="includes/customers_update.php" style="display:inline;">
+                <form method="GET" action="views/update_client_view.php" style="display:inline;">
                     <input type="hidden" name="id" value="<?= htmlspecialchars($customer['id']); ?>">
                     <button type="submit" class="btn btn-primary btn-sm">Update</button>
                 </form>

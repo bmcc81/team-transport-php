@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../services/config.php';
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
@@ -18,9 +19,6 @@ if ($customerId <= 0) {
 }
 
 try {
-    $pdo = new PDO("mysql:host=localhost;dbname=team_transport;charset=utf8", "root", "");
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
     // Fetch target customer
     $stmt = $pdo->prepare("SELECT id, user_id FROM customers WHERE id = :id");
     $stmt->execute([':id' => $customerId]);

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../services/config.php';
+
 // admin_reset_password.php
 if (php_sapi_name() !== 'cli') {
     echo "Run from CLI only.\n";
@@ -13,17 +15,6 @@ if ($argc < 3) {
 
 $username = $argv[1];
 $newPlain = $argv[2];
-
-// DB config - adjust as needed (or include from config)
-$host = "localhost";
-$user = "root";
-$pass = "";
-$db   = "team_transport";
-
-$conn = new mysqli($host, $user, $pass, $db);
-if ($conn->connect_error) {
-    die("DB connection failed: " . $conn->connect_error . PHP_EOL);
-}
 
 $hash = password_hash($newPlain, PASSWORD_DEFAULT);
 

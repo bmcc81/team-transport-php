@@ -1,15 +1,6 @@
 <?php
 require_once "../includes/admin_protect.php";
-
-$host = "localhost";
-$user = "root";
-$pass = "";
-$db   = "team_transport";
-
-$conn = new mysqli($host, $user, $pass, $db);
-if ($conn->connect_error) {
-    die("DB connection failed: " . $conn->connect_error);
-}
+require_once __DIR__ . '/../services/config.php';
 
 if (!isset($_GET['id'])) {
     $_SESSION['error'] = "Invalid user ID.";

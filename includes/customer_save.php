@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once __DIR__ . '/../services/config.php';
 require_once __DIR__ . '/validation.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['id'])) {
@@ -12,9 +13,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['id'])) {
     }
 
     try {
-        $pdo = new PDO("mysql:host=localhost;dbname=team_transport;charset=utf8", "root", "");
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
         $stmt = $pdo->prepare("
             UPDATE customers SET
                 customer_company_name = ?,

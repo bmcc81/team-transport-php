@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../services/config.php';
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
@@ -11,11 +12,6 @@ $loggedInUserId = $_SESSION['user_id'];
 $userRole = $_SESSION['role'] ?? 'driver';
 
 try {
-    $conn = new mysqli("localhost", "root", "", "team_transport");
-    if ($conn->connect_error) {
-        throw new Exception("Connection failed: " . $conn->connect_error);
-    }
-
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
         $customerId = (int) $_POST['id'];
 
@@ -127,8 +123,6 @@ try {
             header("Location: ../views/create_customer_view.php?id=$customerId");
             exit();
         }
-
-        $stmt->close();
     } else {
         $_SESSION['error'] = "Invalid request.";
         header("Location: ../dashboard.php");
