@@ -1,20 +1,11 @@
 <?php
+require_once __DIR__ . '/../services/config.php';
 session_start();
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
   $_SESSION['error'] = "Access denied: Admins only.";
   header("Location: ../dashboard.php");
   exit();
-}
-
-$host = "localhost";
-$user = "root";
-$pass = "";
-$db   = "team_transport";
-
-$conn = new mysqli($host, $user, $pass, $db);
-if ($conn->connect_error) {
-  die("DB connection failed: " . $conn->connect_error);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

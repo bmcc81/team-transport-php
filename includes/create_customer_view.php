@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../services/config.php';
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
@@ -11,9 +12,6 @@ $editing = isset($_GET['id']);
 $customer = [];
 
 try {
-    $pdo = new PDO("mysql:host=localhost;dbname=team_transport;charset=utf8", "root", "");
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
     if ($editing) {
         $stmt = $pdo->prepare("SELECT * FROM customers WHERE id = ?");
         $stmt->execute([$_GET['id']]);

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../services/config.php';
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
@@ -9,12 +10,6 @@ require_once __DIR__ . '/validation.php';
 
 $loggedInUserId = $_SESSION['user_id'];
 $userRole = $_SESSION['role'] ?? 'driver';
-
-// Database connection
-$conn = new mysqli("localhost", "root", "", "team_transport");
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Get the handler user ID from dropdown
@@ -144,8 +139,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: ../views/create_customer_view.php");
         exit();
     }
-
-    $stmt->close();
-    $conn->close();
 }
 ?>

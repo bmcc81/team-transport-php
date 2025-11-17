@@ -2,10 +2,7 @@
 session_start();
 
 // Fetch all users (drivers/admins) to populate the handler dropdown
-$conn = new mysqli("localhost", "root", "", "team_transport");
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+require_once __DIR__ . '/../services/config.php';
 
 $usersResult = $conn->query("SELECT id, username, role FROM users ORDER BY role, username ASC");
 ?>

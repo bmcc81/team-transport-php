@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../services/config.php';
 session_start();
 
 // Only admins can access this page
@@ -16,12 +17,6 @@ if (!isset($_GET['id'])) {
 
 $userId = (int) $_GET['id'];
 
-// Database connection
-$conn = new mysqli("localhost", "root", "", "team_transport");
-if ($conn->connect_error) {
-  die("Connection failed: " . $conn->connect_error);
-}
-
 $stmt = $conn->prepare("SELECT id, full_name, username, email, role FROM users WHERE id=?");
 $stmt->bind_param("i", $userId);
 $stmt->execute();
@@ -38,7 +33,7 @@ if (!$user) {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Edit User</title>
+  <title>Edit User (<?= htmlspecialchars($_SESSION['username']); ?>)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="../styles/css/bootstrap.min.css" rel="stylesheet" />
   <link href="../styles/shared.css" rel="stylesheet" />
@@ -48,7 +43,7 @@ if (!$user) {
   <div class="container" style="max-width: 720px;">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <a href="../dashboard.php" class="btn btn-secondary">← Back</a>
-      <h2 class="m-0">Edit User</h2>
+      <h2 class="m-0">Edit User "<?= htmlspecialchars($_SESSION['username']); ?>"</h2>
     </div>
 
     <?php if (isset($_SESSION['error'])): ?>

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../services/config.php';
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
@@ -7,10 +8,6 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 require_once "../includes/toast_helper.php";
-
-// Connect to DB
-$pdo = new PDO("mysql:host=localhost;dbname=team_transport;charset=utf8", "root", "");
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 // Fetch customers and trips for dropdowns
 $customers = $pdo->query("SELECT id, customer_company_name FROM customers ORDER BY customer_company_name ASC")->fetchAll(PDO::FETCH_ASSOC);

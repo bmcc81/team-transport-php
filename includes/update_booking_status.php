@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../services/config.php';
 require_once __DIR__ . '/toast_helper.php';
 session_start();
 
@@ -10,9 +11,6 @@ if (!$id) {
     header("Location: ../views/bookings_view.php");
     exit();
 }
-
-$pdo = new PDO("mysql:host=localhost;dbname=team_transport;charset=utf8", "root", "");
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 $stmt = $pdo->prepare("UPDATE bookings SET status = ? WHERE id = ?");
 $stmt->execute([$status, $id]);

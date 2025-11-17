@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../services/config.php';
 session_start();
 
 // ✅ Access control: must be logged in
@@ -6,16 +7,6 @@ if (!isset($_SESSION['user_id'])) {
     $_SESSION['error'] = "You must be logged in to delete a customer.";
     header("Location: ../index.php");
     exit();
-}
-
-$host = "localhost";
-$user = "root";
-$pass = "";
-$db   = "team_transport";
-
-$conn = new mysqli($host, $user, $pass, $db);
-if ($conn->connect_error) {
-    die("DB connection failed: " . $conn->connect_error);
 }
 
 // ✅ Ensure POST request
