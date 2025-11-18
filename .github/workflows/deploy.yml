@@ -1,0 +1,23 @@
+name: Deploy to Raspberry Pi
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Raspberry Pi
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.PI_HOST }}
+          username: ${{ secrets.PI_USER }}
+          key: ${{ secrets.PI_KEY }}
+          script: |
+            echo "Running deploy script..."
+            sudo /opt/deploy_php.sh
