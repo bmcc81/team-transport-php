@@ -9,11 +9,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout source
         uses: actions/checkout@v4
 
       - name: Install SSH client
-        run: sudo apt-get install -y openssh-client
+        run: sudo apt-get update && sudo apt-get install -y openssh-client
+
+      - name: Install cloudflared
+        run: |
+          curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+            -o cloudflared
+          chmod +x cloudflared
+          sudo mv cloudflared /usr/local/bin/cloudflared
 
       - name: Configure SSH
         run: |
@@ -21,22 +28,15 @@ jobs:
           echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
-          cat <<EOF >> ~/.ssh/config
-Host rpi
-    HostName $DEPLOY_HOST
-    User $DEPLOY_USER
-    Port $DEPLOY_PORT
-    IdentityFile ~/.ssh/deploy_key
-    ProxyCommand cloudflared access ssh --hostname $DEPLOY_HOST
-EOF
+          printf "Host rpi\n" > ~/.ssh/config
+          printf "    HostName %s\n" "$DEPLOY_HOST" >> ~/.ssh/config
+          printf "    User %s\n" "$DEPLOY_USER" >> ~/.ssh/config
+          printf "    Port %s\n" "$DEPLOY_PORT" >> ~/.ssh/config
+          printf "    IdentityFile ~/.ssh/deploy_key\n" >> ~/.ssh/config
+          printf "    ProxyCommand cloudflared access ssh --hostname %s\n" "$DEPLOY_HOST" >> ~/.ssh/config
 
-      - name: Install cloudflared
-        run: |
-          curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
-            -o cloudflared
-          chmod +x cloudflared
-          sudo mv cloudflared /usr/local/bin/
+          chmod 600 ~/.ssh/config
 
       - name: Deploy files
         run: |
-          rsync -avz --delete -e "ssh -F ~/.ssh/config" . rpi:$DEPLOY_PATH
+          rsync -avz --delete -e "ssh -F ~/.ssh/config" ./ rpi:$DEPLOY_PATH
