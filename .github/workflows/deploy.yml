@@ -9,15 +9,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy to Raspberry Pi
-        uses: appleboy/ssh-action@v1.1.0
-        with:
-          host: ${{ secrets.PI_HOST }}
-          username: ${{ secrets.PI_USER }}
-          key: ${{ secrets.PI_KEY }}
-          script: |
-            echo "Running deploy script..."
-            sudo /opt/deploy_php.sh
+      - name: Install SSH client
+        run: sudo apt-get install -y openssh-client
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          cat <<EOF >> ~/.ssh/config
+Host rpi
+    HostName $DEPLOY_HOST
+    User $DEPLOY_USER
+    Port $DEPLOY_PORT
+    IdentityFile ~/.ssh/deploy_key
+    ProxyCommand cloudflared access ssh --hostname $DEPLOY_HOST
+EOF
+
+      - name: Install cloudflared
+        run: |
+          curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+            -o cloudflared
+          chmod +x cloudflared
+          sudo mv cloudflared /usr/local/bin/
+
+      - name: Deploy files
+        run: |
+          rsync -avz --delete -e "ssh -F ~/.ssh/config" . rpi:$DEPLOY_PATH
