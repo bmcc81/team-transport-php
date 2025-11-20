@@ -19,10 +19,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y curl
 
-          # Download the latest cloudflared .deb package
           curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o cloudflared.deb
 
-          # Install it
           sudo dpkg -i cloudflared.deb || sudo apt-get install -fy
 
       - name: Configure SSH for Cloudflare Tunnel
@@ -30,6 +28,7 @@ jobs:
           DEPLOY_HOST: rpi-ssh.webinkgraphics.com
         run: |
           mkdir -p ~/.ssh
+
           cat <<EOF > ~/.ssh/config
 Host rpi
   HostName $DEPLOY_HOST
@@ -40,8 +39,4 @@ EOF
 
           chmod 600 ~/.ssh/config
 
-      - name: Deploy via rsync over Cloudflare Tunnel
-        run: |
-          rsync -avz \
-            -e "ssh -F ~/.ssh/config" \
-            ./ rpi:/var/www/php-site
+      - name: Deploy via rsync over Cloud
