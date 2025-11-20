@@ -26,17 +26,17 @@ jobs:
 
           # Cloudflare SSH config
           cat <<EOF > ~/.ssh/config
-Host rpi
-    HostName $DEPLOY_HOST
-    User deploy
-    ProxyCommand cloudflared access ssh --hostname %h
-    IdentityFile ~/.ssh/id_rsa
-EOF
+          Host rpi
+            HostName $DEPLOY_HOST
+            User deploy
+            ProxyCommand cloudflared access ssh --hostname %h
+            IdentityFile ~/.ssh/id_rsa
+          EOF
 
-          chmod 600 ~/.ssh/config
+                chmod 600 ~/.ssh/config
 
-      - name: Deploy via rsync over Cloudflare Tunnel
-        run: |
-          rsync -avz \
-            -e "ssh -F ~/.ssh/config" \
-            ./ rpi:/var/www/php-site
+              - name: Deploy via rsync over Cloudflare Tunnel
+                  run: |
+                    rsync -avz \
+                      -e "ssh -F ~/.ssh/config" \
+                      ./ rpi:/var/www/php-site
