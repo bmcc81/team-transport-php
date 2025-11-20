@@ -32,16 +32,14 @@ jobs:
           DEPLOY_HOST: rpi-ssh.webinkgraphics.com
         run: |
           mkdir -p ~/.ssh
-
-          cat <<EOF > ~/.ssh/config
-Host rpi
-  HostName $DEPLOY_HOST
-  User deploy
-  ProxyCommand cloudflared access ssh --hostname %h
-  IdentityFile ~/.ssh/id_rsa
-EOF
-
-          chmod 600 ~/.ssh/config
+          cat << 'EOF' > ~/.ssh/config
+          Host rpi
+            HostName $DEPLOY_HOST
+            User deploy
+            ProxyCommand "cloudflared access ssh --hostname %h"
+            IdentityFile ~/.ssh/id_rsa
+          EOF
+                    chmod 600 ~/.ssh/config
 
       - name: Deploy via rsync over Cloudflare Tunnel
         run: |
