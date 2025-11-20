@@ -16,30 +16,30 @@ jobs:
 
       - name: Install cloudflared
         run: |
-          # Add Cloudflare APT repo
-          curl -fsSL https://pkg.cloudflare.com/cloudflared.gpg | \
-            sudo tee /usr/share/keyrings/cloudflared-archive-keyring.gpg >/dev/null
-
-          echo "deb [signed-by=/usr/share/keyrings/cloudflared-archive-keyringer.gpg] \
-            https://pkg.cloudflare.com/cloudflared $(lsb_release -cs) main" | \
-            sudo tee /etc/apt/sources.list.d/cloudflared.list
-
           sudo apt-get update
-          sudo apt-get install -y cloudflared
+          sudo apt-get install -y curl
+
+          # Download the latest cloudflared .deb package
+          curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o cloudflared.deb
+
+          # Install it
+          sudo dpkg -i cloudflared.deb || sudo apt-get install -fy
 
       - name: Configure SSH for Cloudflare Tunnel
         env:
           DEPLOY_HOST: rpi-ssh.webinkgraphics.com
         run: |
           mkdir -p ~/.ssh
-          cat << 'EOF' > ~/.ssh/config
-          Host rpi
-            HostName $DEPLOY_HOST
-            User deploy
-            ProxyCommand "cloudflared access ssh --hostname %h"
-            IdentityFile ~/.ssh/id_rsa
-          EOF
-                    chmod 600 ~/.ssh/config
+
+          cat <<EOF > ~/.ssh/config
+Host rpi
+  HostName $DEPLOY_HOST
+  User deploy
+  ProxyCommand cloudflared access ssh --hostname %h
+  IdentityFile ~/.ssh/id_rsa
+EOF
+
+          chmod 600 ~/.ssh/config
 
       - name: Deploy via rsync over Cloudflare Tunnel
         run: |
