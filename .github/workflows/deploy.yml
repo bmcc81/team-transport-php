@@ -1,4 +1,4 @@
-name: Deploy to Raspberry Pi - bmcc81
+name: Deploy to Raspberry Pi -- bmcc81
 
 on:
   push:
