@@ -14,7 +14,14 @@ jobs:
 
       - name: Install cloudflared
         run: |
-          sudo mkdir -p /etc/cloudflared
+          # Add Cloudflare APT repo
+          curl -fsSL https://pkg.cloudflare.com/cloudflared.gpg | \
+            sudo tee /usr/share/keyrings/cloudflared-archive-keyring.gpg >/dev/null
+
+          echo "deb [signed-by=/usr/share/keyrings/cloudflared-archive-keyring.gpg] \
+            https://pkg.cloudflare.com/cloudflared $(lsb_release -cs) main" | \
+            sudo tee /etc/apt/sources.list.d/cloudflared.list
+
           sudo apt-get update
           sudo apt-get install -y cloudflared
 
