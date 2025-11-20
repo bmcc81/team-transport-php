@@ -1,4 +1,4 @@
-name: Deploy to Raspberry Pi -- bmcc81
+name: Deploy to Raspberry Pi
 
 on:
   push:
@@ -18,11 +18,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y curl
-
-          # Download the latest cloudflared .deb package
           curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o cloudflared.deb
-
-          # Install it
           sudo dpkg -i cloudflared.deb || sudo apt-get install -fy
 
       - name: Configure SSH for Cloudflare Tunnel
