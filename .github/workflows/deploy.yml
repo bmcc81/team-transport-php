@@ -27,7 +27,7 @@ jobs:
 Host rpi
   HostName $DEPLOY_HOST
   User deploy
-  ProxyCommand cloudflared access ssh --hostname %h
+  ProxyCommand "cloudflared access ssh --hostname %h"
   IdentityFile ~/.ssh/id_rsa
 EOF
           chmod 600 ~/.ssh/config
