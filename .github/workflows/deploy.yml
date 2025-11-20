@@ -23,7 +23,7 @@ jobs:
           DEPLOY_HOST: rpi-ssh.webinkgraphics.com
         run: |
           mkdir -p ~/.ssh
-          cat <<EOF > ~/.ssh/config
+          cat << 'EOF' > ~/.ssh/config
 Host rpi
   HostName $DEPLOY_HOST
   User deploy
