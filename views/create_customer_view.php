@@ -16,7 +16,7 @@ $usersResult = $conn->query("SELECT id, username, role FROM users ORDER BY role,
 </head>
 <body class="bg-light p-4">
 
-  <div class="container">
+  <div class="container-fluid">
     <div class="card shadow-lg p-4">
       <h2 class="text-center mb-4">➕ Create New Customer</h2>
 
