@@ -63,6 +63,22 @@ while ($row = $loadRes->fetch_assoc()) {
     $loads[] = $row;
 }
 
+function loadStatusBadge($status) {
+
+    $status = strtolower($status);
+
+    return match ($status) {
+
+        'delivered'     => '<span class="badge bg-success">Delivered</span>',
+        'pending'       => '<span class="badge bg-warning text-dark">Pending</span>',
+        'in_transit'    => '<span class="badge bg-primary">In Transit</span>',
+        'assigned'      => '<span class="badge" style="background:#6f42c1;">Assigned</span>',
+        'cancelled'     => '<span class="badge bg-danger">Cancelled</span>',
+
+        default         => '<span class="badge bg-secondary">'.htmlspecialchars($status).'</span>'
+    };
+}
+
 ?>
 <!DOCTYPE html>
 <html>
@@ -231,38 +247,69 @@ while ($row = $loadRes->fetch_assoc()) {
     <!-- LOAD LIST -->
     <div class="card">
         <div class="card-body p-0">
-            <table class="table table-striped mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>ID</th>
-                        <th>Ref #</th>
-                        <th>Customer</th>
-                        <th>Driver</th>
-                        <th>Pickup</th>
-                        <th>Delivery</th>
-                        <th>Status</th>
-                        <th></th>
-                    </tr>
-                </thead>
+            <table class="table table-striped table-bordered">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Reference #</th>
+                    <th>Customer</th>
+                    <th>Driver</th>
+                    <th>Pickup</th>
+                    <th>Delivery</th>
+                    <th>Status</th>
+                    <th>Total Weight (kg)</th>
+                    <th>Rate</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
 
-                <tbody>
-                    <?php foreach ($loads as $load): ?>
-                        <tr>
-                            <td><?= $load['load_id'] ?></td>
-                            <td><?= $load['reference_number'] ?></td>
-                            <td><?= $load['customer_company_name'] ?></td>
-                            <td><?= $load['driver_name'] ?? '—' ?></td>
-                            <td><?= $load['pickup_city'] ?></td>
-                            <td><?= $load['delivery_city'] ?></td>
-                            <td><?= $load['load_status'] ?></td>
-                            <td>
-                                <a class="btn btn-sm btn-primary" href="load_view.php?id=<?= $load['load_id'] ?>">View</a>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
+            <tbody>
+            <?php foreach ($loads as $l): ?>
+                <tr>
 
-            </table>
+                    <td><?= $l['load_id'] ?></td>
+
+                    <td><?= htmlspecialchars($l['reference_number']) ?></td>
+
+                    <td><?= htmlspecialchars($l['customer_company_name']) ?></td>
+
+                    <td>
+                        <?= htmlspecialchars($l['driver_name'] ?? '—') ?>
+                    </td>
+
+                    <td>
+                        <?= htmlspecialchars($l['pickup_city']) ?><br>
+                        <small class="text-muted"><?= htmlspecialchars($l['pickup_date']) ?></small>
+                    </td>
+
+                    <td>
+                        <?= htmlspecialchars($l['delivery_city']) ?><br>
+                        <small class="text-muted"><?= htmlspecialchars($l['delivery_date']) ?></small>
+                    </td>
+
+                    <td>
+                        <?= loadStatusBadge($l['load_status']) ?>
+                    </td>
+
+                    <td><?= htmlspecialchars($l['total_weight_kg'] ?? '—') ?></td>
+
+                    <td>
+                        <?= htmlspecialchars($l['rate_amount']) ?>
+                        <?= htmlspecialchars($l['rate_currency']) ?>
+                    </td>
+
+                    <td>
+                        <a href="load_view.php?id=<?= $l['load_id'] ?>" 
+                        class="btn btn-sm btn-primary">
+                            View
+                        </a>
+                    </td>
+
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+
         </div>
     </div>
 

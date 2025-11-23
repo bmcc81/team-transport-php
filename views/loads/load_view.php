@@ -35,11 +35,28 @@ while ($r = $d->fetch_assoc()) $docs[] = $r;
 
 function safe($v) { return htmlspecialchars($v ?? ''); }
 
+function loadStatusBadge($status) {
+
+    $status = strtolower($status);
+
+    return match ($status) {
+
+        'delivered'     => '<span class="badge bg-success">Delivered</span>',
+        'pending'       => '<span class="badge bg-warning text-dark">Pending</span>',
+        'in_transit'    => '<span class="badge bg-primary">In Transit</span>',
+        'assigned'      => '<span class="badge bg-purple" style="background:#6f42c1;">Assigned</span>',
+        'cancelled'     => '<span class="badge bg-danger">Cancelled</span>',
+
+        default         => '<span class="badge bg-secondary">'.htmlspecialchars($status).'</span>'
+    };
+}
+
 ?>
 <!DOCTYPE html>
 <html>
 <head>
     <link href="../../styles/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../styles/css/bootstrap-icons/bootstrap-icons.css">
     <title>Load #<?= $loadId ?></title>
 
     <style>
@@ -59,133 +76,121 @@ function safe($v) { return htmlspecialchars($v ?? ''); }
 </p>
 
 <h4 class="mt-4">Load Details</h4>
+<?php if ($userRole === 'admin' || $userRole === 'dispatcher'): ?>
+    <a href="edit_load.php?id=<?= $loadId ?>" class="btn btn-warning mb-3">Edit Load</a>
+<?php endif; ?>
+<div class="accordion mt-3" id="loadDetailsAccordion">
 
-    <table class="table table-bordered table-striped bg-white mt-2">
+    <!-- Overview -->
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingOverview">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOverview" aria-expanded="true">
+                <i class="bi bi-info-circle-fill me-2"></i> Overview
+            </button>
+        </h2>
+        <div id="collapseOverview" class="accordion-collapse collapse show" aria-labelledby="headingOverview" data-bs-parent="#loadDetailsAccordion">
+            <div class="accordion-body">
+                <table class="table table-striped">
+                    <tr><th>Reference Number</th><td><?= safe($load['reference_number']) ?></td></tr>
+                    <tr><th>Assigned Driver</th><td><?= safe($load['driver_name'] ?? 'Not Assigned') ?></td></tr>
+                    <tr><th>Status</th><td><?= loadStatusBadge($load['load_status']) ?></td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
 
-        <tbody>
+    <!-- Pickup -->
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingPickup">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePickup">
+                <i class="bi bi-box-arrow-in-up me-2"></i> Pickup Information
+            </button>
+        </h2>
+        <div id="collapsePickup" class="accordion-collapse collapse" aria-labelledby="headingPickup" data-bs-parent="#loadDetailsAccordion">
+            <div class="accordion-body">
+                <table class="table table-striped">
+                    <tr><th>Contact Name</th><td><?= safe($load['pickup_contact_name']) ?></td></tr>
+                    <tr><th>Address</th><td><?= safe($load['pickup_address']) ?></td></tr>
+                    <tr><th>City</th><td><?= safe($load['pickup_city']) ?></td></tr>
+                    <tr><th>Postal Code</th><td><?= safe($load['pickup_postal_code']) ?></td></tr>
+                    <tr><th>Pickup Date</th><td><?= safe($load['pickup_date']) ?></td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
 
-            <!-- GENERAL -->
-            <tr>
-                <th style="width: 250px;">Reference Number</th>
-                <td><?= safe($load['reference_number']) ?></td>
-            </tr>
+    <!-- Delivery -->
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingDelivery">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDelivery">
+                <i class="bi bi-box-arrow-in-down me-2"></i> Delivery Information
+            </button>
+        </h2>
+        <div id="collapseDelivery" class="accordion-collapse collapse" aria-labelledby="headingDelivery" data-bs-parent="#loadDetailsAccordion">
+            <div class="accordion-body">
+                <table class="table table-striped">
+                    <tr><th>Contact Name</th><td><?= safe($load['delivery_contact_name']) ?></td></tr>
+                    <tr><th>Address</th><td><?= safe($load['delivery_address']) ?></td></tr>
+                    <tr><th>City</th><td><?= safe($load['delivery_city']) ?></td></tr>
+                    <tr><th>Postal Code</th><td><?= safe($load['delivery_postal_code']) ?></td></tr>
+                    <tr><th>Delivery Date</th><td><?= safe($load['delivery_date']) ?></td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
 
-            <tr>
-                <th>Assigned Driver</th>
-                <td><?= safe($load['driver_name'] ?? 'Not Assigned') ?></td>
-            </tr>
+    <!-- Rates -->
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingRates">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRates">
+                <i class="bi bi-currency-dollar me-2"></i> Weight & Rate Information
+            </button>
+        </h2>
+        <div id="collapseRates" class="accordion-collapse collapse" aria-labelledby="headingRates" data-bs-parent="#loadDetailsAccordion">
+            <div class="accordion-body">
+                <table class="table table-striped">
+                    <tr><th>Total Weight (kg)</th><td><?= safe($load['total_weight_kg']) ?></td></tr>
+                    <tr><th>Rate Amount</th><td><?= safe($load['rate_amount']) ?></td></tr>
+                    <tr><th>Rate Currency</th><td><?= safe($load['rate_currency']) ?></td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
 
-            <tr>
-                <th>Status</th>
-                <td class="text-capitalize"><?= safe($load['load_status']) ?></td>
-            </tr>
+    <!-- Notes -->
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingNotes">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNotes">
+                <i class="bi bi-card-text me-2"></i> Notes
+            </button>
+        </h2>
+        <div id="collapseNotes" class="accordion-collapse collapse" aria-labelledby="headingNotes" data-bs-parent="#loadDetailsAccordion">
+            <div class="accordion-body">
+                <div class="p-2 bg-light border rounded">
+                    <?= nl2br(safe($load['notes'])) ?>
+                </div>
+            </div>
+        </div>
+    </div>
 
-            <!-- PICKUP SECTION -->
-            <tr class="table-primary">
-                <th colspan="2">Pickup Information</th>
-            </tr>
+    <!-- Timestamps -->
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingTimestamps">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTimestamps">
+                <i class="bi bi-clock-history me-2"></i> Timestamps
+            </button>
+        </h2>
+        <div id="collapseTimestamps" class="accordion-collapse collapse" aria-labelledby="headingTimestamps" data-bs-parent="#loadDetailsAccordion">
+            <div class="accordion-body">
+                <table class="table table-striped">
+                    <tr><th>Created At</th><td><?= safe($load['created_at']) ?></td></tr>
+                    <tr><th>Updated At</th><td><?= safe($load['updated_at'] ?? '--') ?></td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
 
-            <tr>
-                <th>Pickup Contact Name</th>
-                <td><?= safe($load['pickup_contact_name']) ?></td>
-            </tr>
-
-            <tr>
-                <th>Pickup Address</th>
-                <td><?= safe($load['pickup_address']) ?></td>
-            </tr>
-
-            <tr>
-                <th>Pickup City</th>
-                <td><?= safe($load['pickup_city']) ?></td>
-            </tr>
-
-            <tr>
-                <th>Pickup Postal Code</th>
-                <td><?= safe($load['pickup_postal_code']) ?></td>
-            </tr>
-
-            <tr>
-                <th>Pickup Date</th>
-                <td><?= safe($load['pickup_date']) ?></td>
-            </tr>
-
-            <!-- DELIVERY SECTION -->
-            <tr class="table-primary">
-                <th colspan="2">Delivery Information</th>
-            </tr>
-
-            <tr>
-                <th>Delivery Contact Name</th>
-                <td><?= safe($load['delivery_contact_name']) ?></td>
-            </tr>
-
-            <tr>
-                <th>Delivery Address</th>
-                <td><?= safe($load['delivery_address']) ?></td>
-            </tr>
-
-            <tr>
-                <th>Delivery City</th>
-                <td><?= safe($load['delivery_city']) ?></td>
-            </tr>
-
-            <tr>
-                <th>Delivery Postal Code</th>
-                <td><?= safe($load['delivery_postal_code']) ?></td>
-            </tr>
-
-            <tr>
-                <th>Delivery Date</th>
-                <td><?= safe($load['delivery_date']) ?></td>
-            </tr>
-
-            <!-- WEIGHT & RATES -->
-            <tr class="table-primary">
-                <th colspan="2">Weight & Rate Information</th>
-            </tr>
-
-            <tr>
-                <th>Total Weight (kg)</th>
-                <td><?= safe($load['total_weight_kg']) ?></td>
-            </tr>
-
-            <tr>
-                <th>Rate Amount</th>
-                <td><?= safe($load['rate_amount']) ?></td>
-            </tr>
-
-            <tr>
-                <th>Rate Currency</th>
-                <td><?= safe($load['rate_currency']) ?></td>
-            </tr>
-
-            <!-- NOTES -->
-            <tr class="table-primary">
-                <th colspan="2">Notes</th>
-            </tr>
-
-            <tr>
-                <td colspan="2"><?= nl2br(safe($load['notes'])) ?></td>
-            </tr>
-
-            <!-- TIMESTAMP INFORMATION -->
-            <tr class="table-primary">
-                <th colspan="2">Timestamps</th>
-            </tr>
-
-            <tr>
-                <th>Created At</th>
-                <td><?= safe($load['created_at']) ?></td>
-            </tr>
-
-            <tr>
-                <th>Updated At</th>
-                <td><?= safe($load['updated_at'] ?? '--') ?></td>
-            </tr>
-
-        </tbody>
-    </table>
+</div>
 
 
 <hr>
@@ -236,4 +241,5 @@ function safe($v) { return htmlspecialchars($v ?? ''); }
 </div>
 
 </body>
+<script src="../../styles/js/bootstrap.bundle.min.js"></script>
 </html>
