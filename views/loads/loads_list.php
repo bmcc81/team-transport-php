@@ -2,12 +2,12 @@
 require_once __DIR__ . '/../../services/config.php';
 session_start();
 
-if (!isset($_SESSION['id'])) {   // your user ID in session
+if (!isset($_SESSION['user_id'])) {   // your user ID in session
     header("Location: index.php");
     exit;
 }
 
-$loggedInUserId = (int) $_SESSION['id'];
+$loggedInUserId = (int) $_SESSION['user_id'];
 $userRole = $_SESSION['role'] ?? 'driver';
 
 /* -------------------------
@@ -69,7 +69,7 @@ while ($row = $loadRes->fetch_assoc()) {
 <head>
     <meta charset="UTF-8">
     <title>Loads</title>
-    <link href="styles/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../../styles/css/bootstrap.min.css" rel="stylesheet">
 </head>
 
 <body class="bg-light">
@@ -83,49 +83,147 @@ while ($row = $loadRes->fetch_assoc()) {
         </button>
 
         <div id="createForm" class="collapse card card-body mb-4">
-            <form method="POST" action="create_load.php">
+            <form action="create_load.php" method="POST" class="p-3 border rounded bg-light">
 
-                <div class="row mb-3">
-                    <div class="col-md-4">
-                        <label>Customer</label>
-                        <select name="customer_id" class="form-select" required>
-                            <?php foreach ($customers as $c): ?>
-                                <option value="<?= $c['id'] ?>"><?= $c['customer_company_name'] ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                <h4 class="mb-3">Create New Load</h4>
+
+                <!-- Customer -->
+                <div class="mb-3">
+                    <label class="form-label">Customer</label>
+                    <select name="customer_id" class="form-control" required>
+                        <option value="">Select customer</option>
+                        <?php foreach ($customers as $c): ?>
+                            <option value="<?= $c['id'] ?>"><?= $c['customer_company_name'] ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <!-- Reference Number -->
+                <div class="mb-3">
+                    <label class="form-label">Reference Number</label>
+                    <input type="text" name="reference_number" class="form-control" placeholder="LD-2025-010" required>
+                </div>
+
+                <!-- Description -->
+                <div class="mb-3">
+                    <label class="form-label">Load Description</label>
+                    <textarea name="description" class="form-control" rows="2"></textarea>
+                </div>
+
+                <hr>
+
+                <!-- PICKUP DETAILS -->
+                <h5 class="mt-3">Pickup Information</h5>
+
+                <div class="mb-3">
+                    <label class="form-label">Pickup Contact Name</label>
+                    <input type="text" name="pickup_contact_name" class="form-control">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Pickup Address</label>
+                    <input type="text" name="pickup_address" class="form-control" required>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Pickup City</label>
+                        <input type="text" name="pickup_city" class="form-control" required>
                     </div>
-
-                    <div class="col-md-4">
-                        <label>Reference #</label>
-                        <input type="text" name="reference_number" class="form-control" required>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Pickup Postal Code</label>
+                        <input type="text" name="pickup_postal_code" class="form-control">
                     </div>
-
-                    <div class="col-md-4">
-                        <label>Assign Driver</label>
-                        <select name="assigned_driver_id" class="form-select">
-                            <option value="">Unassigned</option>
-                            <?php foreach ($drivers as $d): ?>
-                                <option value="<?= $d['id'] ?>"><?= $d['username'] ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Pickup Date/Time</label>
+                        <input type="datetime-local" name="pickup_date" class="form-control" required>
                     </div>
                 </div>
 
-                <h5>Pickup</h5>
-                <div class="row mb-3">
-                    <div class="col-md-6"><input required type="text" name="pickup_address" class="form-control" placeholder="Pickup Address"></div>
-                    <div class="col-md-3"><input required type="text" name="pickup_city" class="form-control" placeholder="Pickup City"></div>
-                    <div class="col-md-3"><input required type="datetime-local" name="pickup_date" class="form-control"></div>
+                <hr>
+
+                <!-- DELIVERY DETAILS -->
+                <h5 class="mt-3">Delivery Information</h5>
+
+                <div class="mb-3">
+                    <label class="form-label">Delivery Contact Name</label>
+                    <input type="text" name="delivery_contact_name" class="form-control">
                 </div>
 
-                <h5>Delivery</h5>
-                <div class="row mb-3">
-                    <div class="col-md-6"><input required type="text" name="delivery_address" class="form-control" placeholder="Delivery Address"></div>
-                    <div class="col-md-3"><input required type="text" name="delivery_city" class="form-control" placeholder="Delivery City"></div>
-                    <div class="col-md-3"><input required type="datetime-local" name="delivery_date" class="form-control"></div>
+                <div class="mb-3">
+                    <label class="form-label">Delivery Address</label>
+                    <input type="text" name="delivery_address" class="form-control" required>
                 </div>
 
-                <button type="submit" class="btn btn-success">Create Load</button>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Delivery City</label>
+                        <input type="text" name="delivery_city" class="form-control" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Delivery Postal Code</label>
+                        <input type="text" name="delivery_postal_code" class="form-control">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Delivery Date/Time</label>
+                        <input type="datetime-local" name="delivery_date" class="form-control" required>
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- LOAD DETAILS -->
+                <h5 class="mt-3">Load & Pricing Details</h5>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Total Weight (kg)</label>
+                        <input type="number" step="0.01" name="total_weight_kg" class="form-control">
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Rate Amount</label>
+                        <input type="number" step="0.01" name="rate_amount" class="form-control">
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Currency</label>
+                        <input type="text" name="rate_currency" value="CAD" class="form-control">
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- DRIVER -->
+                <div class="mb-3">
+                    <label class="form-label">Assigned Driver</label>
+                    <select name="assigned_driver_id" class="form-control">
+                        <option value="">No driver assigned</option>
+                        <?php foreach ($drivers as $d): ?>
+                            <option value="<?= $d['id'] ?>"><?= $d['full_name'] ?> (<?= $d['username'] ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <!-- Status -->
+                <div class="mb-3">
+                    <label class="form-label">Load Status</label>
+                    <select name="load_status" class="form-control">
+                        <option value="pending">Pending</option>
+                        <option value="assigned">Assigned</option>
+                        <option value="in_transit">In Transit</option>
+                        <option value="delivered">Delivered</option>
+                    </select>
+                </div>
+
+                <!-- Notes -->
+                <div class="mb-3">
+                    <label class="form-label">Notes</label>
+                    <textarea name="notes" class="form-control" rows="2"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-success w-100 mt-3">Create Load</button>
+
             </form>
         </div>
     <?php endif; ?>
@@ -170,6 +268,6 @@ while ($row = $loadRes->fetch_assoc()) {
 
 </div>
 
-<script src="styles/js/bootstrap.bundle.min.js"></script>
+<script src="../../styles/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

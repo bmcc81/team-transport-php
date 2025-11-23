@@ -125,6 +125,8 @@ include "includes/user_dashboard_customers.php";
 
     <a href="views/bookings_view.php" class="btn btn-warning mt-2">Manage Bookings</a>
 
+    <a href="views/loads/loads_list.php?id=<?= htmlspecialchars($_SESSION['user_id']); ?>" class="btn btn-primary mt-2">Load View</a>
+
   </div>
 
   <!-- ✅ Toast Notifications -->
