@@ -26,13 +26,16 @@ include "includes/user_dashboard_customers.php";
         <a href="views/create_user_by_admin_view.php" class="btn btn-primary">Create User</a>
         <a href="views/edit_user_by_admin_view.php?id=<?= htmlspecialchars($_SESSION['user_id']); ?>" class="btn btn-outline-info">Edit My Profile</a>
       <?php endif; ?>
-    </div>
-
+    </div>    
     <a href="views/logout.php" class="btn btn-danger">Logout</a>
   </div>
 
   <header class="py-3 mb-4 border-bottom">
-    <h1><?= htmlspecialchars(ucfirst($_SESSION['username'])); ?>'s Client Dashboard</h1>
+    <div>
+      <h1>Customers Dashboard </h1> 
+      <b><div class="font-dash">Current User: </b><?= htmlspecialchars(ucfirst($_SESSION['username'])); ?></div>
+      <a href="views/loads/loads_list.php?id=<?= htmlspecialchars($_SESSION['user_id']); ?>" class="btn btn-primary mt-2">Loads View</a>
+    </div>
   </header>
 
   <div class="container-fluid">
