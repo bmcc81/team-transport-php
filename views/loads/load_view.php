@@ -4,12 +4,13 @@ session_start();
 if (!isset($_SESSION['user_id'])) {
     die("Not logged in");
 }
+include __DIR__ . '/../../includes/header.php';
+require_once __DIR__ . '/../../services/config.php';
 
 $loadId = (int) $_GET['id'];
 $userId = (int) $_SESSION['user_id'];
 $userRole = $_SESSION['role'];
 
-require_once __DIR__ . '/../../services/config.php';
 
 /* LOAD DETAILS */
 $stmt = $conn->prepare("
@@ -63,7 +64,7 @@ function loadStatusBadge($status) {
     <title>Load #<?= $loadId ?></title>
 </head>
 
-<body class="p-4 bg-light">
+<body>
 
 <a href="loads_list.php" class="btn btn-primary mb-3">&larr; Back to Load List</a>
 

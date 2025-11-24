@@ -2,6 +2,8 @@
 require_once __DIR__ . '/../services/config.php';
 session_start();
 
+include __DIR__ . '/header.php';
+
 if (!isset($_SESSION['user_id'])) {
     $_SESSION['error'] = "You must be logged in to access this page.";
     header("Location: ../index.php");
@@ -36,9 +38,7 @@ try {
     <title><?= $editing ? "Edit Customer" : "Create Customer" ?></title>
     <link href="../styles/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="p-4 bg-light">
-
-<a href="../dashboard.php" class="btn btn-secondary mb-3">← Back to Dashboard</a>
+<body>
 
 <h2 class="mb-4"><?= $editing ? "Edit Customer" : "Create New Customer" ?></h2>
 

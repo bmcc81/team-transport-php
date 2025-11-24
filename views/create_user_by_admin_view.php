@@ -7,6 +7,7 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? null) !== 'admin') {
   header("Location: ../dashboard.php");
   exit();
 }
+include __DIR__ . '/../includes/header.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -17,11 +18,10 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? null) !== 'admin') {
   <link href="../styles/css/bootstrap.min.css" rel="stylesheet" />
   <link href="../styles/shared.css" rel="stylesheet" />
 </head>
-<body class="bg-light p-4">
+<body>
 
   <div class="container" style="max-width: 720px;">
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <a href="../dashboard.php" class="btn btn-secondary">← Back</a>
       <h2 class="m-0">Create User by Admin (Only)</h2>
     </div>
 

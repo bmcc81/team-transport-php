@@ -6,7 +6,7 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: ../index.php");
     exit();
 }
-
+include __DIR__ . '/../includes/header.php';
 require_once "../includes/toast_helper.php";
 
 // Fetch customers and trips for dropdowns
@@ -32,7 +32,7 @@ $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
   <link href="../styles/css/bootstrap.min.css" rel="stylesheet">
   <link href="../styles/shared.css" rel="stylesheet">
 </head>
-<body class="p-4 bg-light">
+<body>
   <a href="../dashboard.php" class="btn btn-secondary mb-3">← Back to Dashboard</a>
   <h2 class="mb-4">Manage Bookings</h2>
 
