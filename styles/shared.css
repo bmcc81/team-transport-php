@@ -40,6 +40,10 @@
   color: #082032 !important;
 }
 
+.font-lg {
+  font-size: 1.8rem;
+}
+
 .font-sml {
   font-size: 1.2rem;
 }
@@ -51,6 +55,17 @@
 
 .marg-btm {
   margin-bottom: 0px !important;
+}
+
+.current_user_role {
+  font-size: 1.2rem;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+}
+
+.text-right {
+  text-align: right;
 }
 
 

@@ -12,8 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-    $pdo = new PDO("mysql:host=localhost;dbname=team_transport;charset=utf8", "root", "");
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    require_once __DIR__ . '/../services/config.php';
 
     $stmt = $pdo->prepare("INSERT INTO bookings (customer_id, trip_id, status) VALUES (?, ?, 'pending')");
     $stmt->execute([$customerId, $tripId]);

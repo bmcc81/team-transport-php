@@ -31,11 +31,17 @@ include "includes/user_dashboard_customers.php";
   </div>
 
   <header class="py-3 mb-4 border-bottom">
-    <div>
-      <h1>Customers Dashboard </h1> 
-      <b><div class="font-dash">Current User: </b><?= htmlspecialchars(ucfirst($_SESSION['username'])); ?></div>
-      <a href="views/loads/loads_list.php?id=<?= htmlspecialchars($_SESSION['user_id']); ?>" class="btn btn-primary mt-2">Loads View</a>
+    <div class="row">
+      <div class="col-6 font-lg">
+        <span><b>Customers Dashboard</b></span> 
+      </div>
+      <div class="col-6 current_user_role text-right">
+        <span>
+          <b>Current User: </b><?= htmlspecialchars(ucfirst($_SESSION['username'])); ?> | <b>Role: </b><?= htmlspecialchars($_SESSION['role']); ?>
+        </span>
+      </div>
     </div>
+    <a class="btn btn-primary mt-2" href="views/loads/loads_list.php?id=<?= htmlspecialchars($_SESSION['user_id']); ?>" >Loads View</a>
   </header>
 
   <div class="container-fluid">
