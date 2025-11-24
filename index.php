@@ -7,6 +7,7 @@
   <meta charset="UTF-8">
   <title>Team Transport - Login</title>
     <link href="./styles/css/bootstrap.min.css" rel="stylesheet">
+    <link href="./styles/css/login.css" rel="stylesheet">
     <script src="./styles/js/bootstrap.bundle.min.js"></script>
 
     <!-- Manifest -->
@@ -18,8 +19,18 @@
 </head>
 <body class="bg-light">
 
-<div class="container d-flex justify-content-center align-items-center vh-100">
-  <div class="card shadow-lg p-4" style="max-width: 400px; width: 100%;">
+<div class="row">
+  <div class="class logo">
+      <img src="images/logo.png" alt="logo">
+  </div>
+</div>
+
+<div class="TMS-title">Transport Management System</div>
+
+<div class="container d-flex justify-content-center align-items-center">
+
+    
+  <div class="row card shadow-lg p-4" style="max-width: 400px; width: 100%;">
     <h3 class="text-center mb-4">Login</h3>
     
     <?php if (isset($_SESSION['error'])): ?>
@@ -30,6 +41,8 @@
 
       </div>
     <?php endif; ?>
+
+
 
     <form method="POST" action="includes/login.php">
         <div class="mb-3">
