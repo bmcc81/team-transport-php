@@ -56,29 +56,30 @@ function loadStatusBadge($status) {
 <html>
 <head>
     <link href="../../styles/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../styles/css/bootstrap-icons/bootstrap-icons.css">
-    <title>Load #<?= $loadId ?></title>
+    <link href="../../styles/css/bootstrap-icons/bootstrap-icons.css" rel="stylesheet" >
+    <link href="../../styles/shared.css" rel="stylesheet">
+    <link href="../../styles/load_view.css" rel="stylesheet">
 
-    <style>
-        .section-title { font-weight: bold; margin-top: 20px; }
-        .value-box { padding: 8px; background:#f8f9fa; border-radius:6px; }
-        .label-box { font-size:13px; font-weight:600; color:#6c757d; margin-bottom:3px; }
-    </style>
+    <title>Load #<?= $loadId ?></title>
 </head>
 
 <body class="p-4 bg-light">
 
 <a href="loads_list.php" class="btn btn-primary mb-3">&larr; Back to Load List</a>
 
-<h3 class="mb-1">Load #<?= $loadId ?></h3>
-<p class="text-muted mb-4">
+
+<p class="mb-4 font-header marg-btm">
     <strong>Customer:</strong> <?= safe($load['customer_company_name']) ?>
+    <div class="row text-muted">
+        <div class="col-6 load-details">Load Details - Load #<?= $loadId ?></div>
+        <div class="col-6 edit-load">
+            <?php if ($userRole === 'admin' || $userRole === 'dispatcher'): ?>
+                <a href="edit_load.php?id=<?= $loadId ?>" class="btn btn-warning mb-3">Edit Load</a>
+            <?php endif; ?>
+        </div>
+    </div>
 </p>
 
-<h4 class="mt-4">Load Details</h4>
-<?php if ($userRole === 'admin' || $userRole === 'dispatcher'): ?>
-    <a href="edit_load.php?id=<?= $loadId ?>" class="btn btn-warning mb-3">Edit Load</a>
-<?php endif; ?>
 <div class="accordion mt-3" id="loadDetailsAccordion">
 
     <!-- Overview -->

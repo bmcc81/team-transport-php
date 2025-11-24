@@ -21,6 +21,7 @@
   font-size: 0.95rem;
   opacity: 0.95;
 }
+
 .toast-body {
   font-weight: 500;
 }
@@ -42,3 +43,14 @@
 .font-sml {
   font-size: 1.2rem;
 }
+
+.font-header {
+  font-size: 2.4rem;
+  font-weight: 500;
+}
+
+.marg-btm {
+  margin-bottom: 0px !important;
+}
+
+
