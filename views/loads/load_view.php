@@ -213,7 +213,7 @@ function loadStatusBadge($status) {
             <strong><?= strtoupper($d['document_type']) ?></strong>
             <br><small class="text-muted">Uploaded at: <?= $d['uploaded_at'] ?></small>
         </div>
-        <a href="/TeamTransport/<?= $d['file_path'] ?>" 
+        <a href="../../<?= $d['file_path'] ?>" 
            target="_blank"
            class="btn btn-sm btn-primary">View</a>
     </li>
