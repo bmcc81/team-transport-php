@@ -230,7 +230,7 @@ require_once __DIR__ . '/loads_query.php';
     </div>
 
     <table class="table table-striped table-bordered align-middle">
-        <thead class="table-dark">
+        <thead class="table-dark table-theme">
             <tr>
                 <th><input type="checkbox" id="selectAll"></th>
                 <?php

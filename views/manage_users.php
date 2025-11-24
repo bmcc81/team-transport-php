@@ -50,7 +50,7 @@ try {
 <?php endif; ?>
 
 <table class="table table-striped table-hover shadow-sm">
-    <thead class="table-dark">
+    <thead class="table-dark table-theme">
         <tr>
             <th>ID</th>
             <th>Username</th>

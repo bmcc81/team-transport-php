@@ -18,7 +18,7 @@ include "includes/user_dashboard_customers.php";
   <link href="./styles/shared.css" rel="stylesheet">
 </head>
 <body>
-  <header class="py-3 mb-4 border-bottom">
+  <header class="py-3 border-bottom">
     <div class="row">
       <div class="col-6 font-lg">
         <span><b>Customers Dashboard</b></span> 
@@ -27,7 +27,7 @@ include "includes/user_dashboard_customers.php";
 
   <div class="container-fluid">
     <table class="table table-sm table-striped table-hover shadow-sm">
-      <thead class="table">
+      <thead class="table-theme">
         <tr>
           <th scope="col">Company Name</th>
           <th scope="col">Client Owner</th>
