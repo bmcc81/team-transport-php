@@ -1,5 +1,6 @@
 <?php
 require_once "../includes/admin_protect.php"; // ensures only admins can access
+include __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../services/config.php';
 
 try {
@@ -30,10 +31,9 @@ try {
     <title>Manage Users - Admin</title>
     <link href="../styles/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="p-4 bg-light">
+<body>
 
 <div class="mb-3">
-    <a href="../dashboard.php" class="btn btn-secondary">← Back to Dashboard</a>
     <a href="create_user_by_admin_view.php" class="btn btn-success">+ Create User</a>
 </div>
 
@@ -81,19 +81,27 @@ try {
                     <td><?= htmlspecialchars($user['created_at'] ?? '—'); ?></td>
                     <td>
                         <?php if ($user['username'] !== 'admin'): ?>
-                            <!-- Delete Button triggers Modal -->
-                            <button type="button" class="btn btn-sm btn-danger" 
-                                    data-bs-toggle="modal" 
-                                    data-bs-target="#deleteModal<?= $user['id']; ?>">
-                                Delete
-                            </button>
+                            <div class="row">
+                                <div class="class col-6">
+                                    <!-- Delete Button triggers Modal -->
+                                    <button type="button" class="btn btn-sm btn-danger col-12" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#deleteModal<?= $user['id']; ?>">
+                                        Delete
+                                    </button>
+                                </div>
+                                <div class="class col-6">
+                                    <!-- Edit Button -->
+                                    <form method="GET" action="../views/edit_user_view.php" style="display:inline;">
+                                            <input type="hidden" name="id" value="<?= htmlspecialchars($user['id']); ?>">
+                                            <button type="submit" class="btn btn-sm btn-primary col-12">Edit</button>
+                                    </form>
 
-                            <!-- Edit Button -->
-                            <form method="GET" action="../views/edit_user_view.php" style="display:inline;">
-                                <input type="hidden" name="id" value="<?= htmlspecialchars($user['id']); ?>">
-                                <button type="submit" class="btn btn-sm btn-primary">Edit</button>
-                            </form>
+                                </div>
 
+                            </div>
+                            
+             
                             <!-- Delete Confirmation Modal -->
                             <div class="modal fade" id="deleteModal<?= $user['id']; ?>" tabindex="-1" aria-labelledby="deleteModalLabel<?= $user['id']; ?>" aria-hidden="true">
                                 <div class="modal-dialog modal-dialog-centered">

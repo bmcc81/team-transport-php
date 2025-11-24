@@ -6,7 +6,7 @@ if (!isset($_SESSION['username'])) {
     header("Location: index.php");
     exit;
 }
-
+include __DIR__ . '/includes/header.php';
 include "includes/user_dashboard_customers.php";
 ?>
 
@@ -17,31 +17,12 @@ include "includes/user_dashboard_customers.php";
   <link href="./styles/css/bootstrap.min.css" rel="stylesheet">
   <link href="./styles/shared.css" rel="stylesheet">
 </head>
-<body class="p-4 bg-light">
-
-  <div class="logout-btn mb-3 d-flex justify-content-between">
-    <div>
-      <?php if ($_SESSION['role'] === 'admin'): ?>
-        <a href="views/manage_users.php" class="btn btn-dark me-2">Manage Users</a>
-        <a href="views/create_user_by_admin_view.php" class="btn btn-primary">Create User</a>
-        <a href="views/edit_user_by_admin_view.php?id=<?= htmlspecialchars($_SESSION['user_id']); ?>" class="btn btn-outline-info">Edit My Profile</a>
-      <?php endif; ?>
-    </div>    
-    <a href="views/logout.php" class="btn btn-danger">Logout</a>
-  </div>
-
+<body>
   <header class="py-3 mb-4 border-bottom">
     <div class="row">
       <div class="col-6 font-lg">
         <span><b>Customers Dashboard</b></span> 
       </div>
-      <div class="col-6 current_user_role text-right">
-        <span>
-          <b>Current User: </b><?= htmlspecialchars(ucfirst($_SESSION['username'])); ?> | <b>Role: </b><?= htmlspecialchars($_SESSION['role']); ?>
-        </span>
-      </div>
-    </div>
-    <a class="btn btn-primary mt-2" href="views/loads/loads_list.php?id=<?= htmlspecialchars($_SESSION['user_id']); ?>" >Loads View</a>
   </header>
 
   <div class="container-fluid">
@@ -129,9 +110,7 @@ include "includes/user_dashboard_customers.php";
         <?php endif; ?>
       </tbody>
     </table>
-
-    <a href="views/create_customer_view.php" class="btn btn-success mt-2">Create Customer</a>
-
+    
     <a href="views/bookings_view.php" class="btn btn-warning mt-2">Manage Bookings</a>
 
   </div>

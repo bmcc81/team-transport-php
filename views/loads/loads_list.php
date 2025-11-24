@@ -1,10 +1,12 @@
 <?php
 session_start();
-require_once __DIR__ . '/../../services/config.php';
 
 if (!isset($_SESSION['user_id'])) {
     die("Not logged in");
 }
+
+include __DIR__ . '/../../includes/header.php';
+require_once __DIR__ . '/../../services/config.php';
 
 $userId   = (int) $_SESSION['user_id'];
 $userRole = $_SESSION['role'] ?? 'driver';
@@ -37,8 +39,7 @@ require_once __DIR__ . '/loads_query.php';
         .btn-purple:hover { background:#5a379c; color:#fff; }
     </style>
 </head>
-<body class="p-4 bg-light">
-<a href="../../dashboard.php" class="btn btn-primary mb-3">&larr; Back to Dashboard</a>
+<body>
 <h3 class="mb-3">Loads</h3>
 
 <!-- Quick status buttons -->

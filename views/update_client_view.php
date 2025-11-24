@@ -1,11 +1,13 @@
 <?php
-require_once __DIR__ . '/../services/config.php';
+
 session_start();
 
 // Only admin can update users
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     die("Access denied: Admins only.");
 }
+require_once __DIR__ . '/../services/config.php';
+include __DIR__ . '/../includes/header.php';
 
 // Get user id from URL
 $id = intval($_GET['id'] ?? 0);
@@ -39,8 +41,8 @@ $handlers = $handlerQuery->fetch_all(MYSQLI_ASSOC);
 </head>
 <body class="bg-light">
 
-<div class="container mt-5">
-    <div class="card shadow p-4" style="max-width: 600px; margin:auto;">
+<div>
+    <div class="card shadow p-4" style="margin:auto;">
         <h2 class="mb-4 text-center">Update Client</h2>
 
         <?php if (!empty($error)): ?>

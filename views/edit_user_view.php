@@ -1,6 +1,7 @@
 <?php
 require_once "../includes/admin_protect.php";
 require_once __DIR__ . '/../services/config.php';
+include __DIR__ . '/../includes/header.php';
 
 if (!isset($_GET['id'])) {
     $_SESSION['error'] = "Invalid user ID.";
@@ -30,7 +31,7 @@ if (!$userData) {
   <title>Edit User</title>
   <link href="../styles/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="p-4">
+<body>
   <a href="manage_users.php" class="btn btn-secondary mb-3">← Back</a>
   <h2>Edit User: <?= htmlspecialchars($userData['username']); ?></h2>
 

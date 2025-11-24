@@ -10,8 +10,10 @@ if ($userRole !== 'admin' && $userRole !== 'dispatcher') {
     die("Unauthorized");
 }
 
-$loadId = (int) $_GET['id'];
+include __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../services/config.php';
+
+$loadId = (int) $_GET['id'];
 
 /* FETCH LOAD */
 $stmt = $conn->prepare("
@@ -40,9 +42,9 @@ $drivers = $conn->query("SELECT id, username FROM users WHERE role = 'driver' OR
     <link href="../../styles/css/bootstrap.min.css" rel="stylesheet">
     <title>Edit Load #<?= $loadId ?></title>
 </head>
-<body class="p-4 bg-light">
+<body>
 
-<a href="load_view.php?id=<?= $loadId ?>" class="btn btn-secondary mb-3">&larr; Back</a>
+<a href="load_view.php?id=<?= $loadId ?>" class="btn btn-secondary mb-3">&larr; Back to Load Details</a>
 
 <h3>Edit Load #<?= $loadId ?></h3>
 
