@@ -1,8 +1,8 @@
 <?php
-require_once __DIR__ . '/../../services/config.php';
+
 session_start();
 
-if (!isset($_SESSION['id'])) {
+if (!isset($_SESSION['user_id'])) {
     die("Not logged in");
 }
 
@@ -10,6 +10,8 @@ $userRole = $_SESSION['role'];
 if ($userRole !== 'admin' && $userRole !== 'dispatcher') {
     die("Unauthorized");
 }
+
+require_once __DIR__ . '/../../services/config.php';
 
 $creatorId = (int) $_SESSION['id'];
 

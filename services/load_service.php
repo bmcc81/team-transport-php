@@ -16,7 +16,7 @@ function createLoad(mysqli $conn, array $data, int $createdBy, array $files)
     $assignedDriver = $data['assigned_driver_id'] ?: null;
 
     $stmt->bind_param(
-        "iiissssssssssssddss",
+        "iiissssssssssssddsss",
         $data['customer_id'],
         $createdBy,
         $assignedDriver,
@@ -67,7 +67,7 @@ function updateLoad(mysqli $conn, int $loadId, array $data, array $files)
     ");
 
     $stmt->bind_param(
-        "iissssssssssssddssi",
+         "iiissssssssssssddsssi",
         $data['customer_id'],
         $assignedDriver,
         $data['reference_number'],
