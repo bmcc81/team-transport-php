@@ -11,7 +11,7 @@ $userRole = $_SESSION['role'] ?? '';
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>TeamTransport</title>
+    <title>Team Transport</title>
 
     <!-- Bootstrap -->
     <link rel="stylesheet" href="/styles/css/bootstrap.min.css">
@@ -19,8 +19,10 @@ $userRole = $_SESSION['role'] ?? '';
     <!-- Icons -->
     <link rel="stylesheet" href="/styles/css/bootstrap-icons/bootstrap-icons.css">
 
-    <!-- Custom Branding -->
+    <!--   THEME --->
     <link rel="stylesheet" href="/styles/theme.css">
+
+    <script src="/styles/js/bootstrap.bundle.min.js"></script>
 
 </head>
 
@@ -52,35 +54,65 @@ $userRole = $_SESSION['role'] ?? '';
                 <li class="nav-item">
                     <a class="nav-link tt-nav-link <?= $_SERVER['REQUEST_URI'] === '/dashboard.php' ? 'active' : '' ?>"
                        href="/dashboard.php">
-                        <i class="bi bi-speedometer2"></i> Dashboard
+                        <i class="bi bi-speedometer2"></i><span class="menu-title">Dashboard</span>
                     </a>
                 </li>
 
-                <!-- Loads -->
-                <li class="nav-item">
-                    <a class="nav-link tt-nav-link <?= str_contains($_SERVER['REQUEST_URI'], '/loads') ? 'active' : '' ?>"
-                       href="/views/loads/loads_list.php">
-                        <i class="bi bi-box-seam"></i> Loads
+                <!-- Loads Dropdown -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle tt-nav-link <?= str_contains($_SERVER['REQUEST_URI'], '/loads') ? 'active' : '' ?>"
+                    href="#" id="loadsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-box-seam"></i><span class="menu-title">Loads</span>
                     </a>
+
+                    <ul class="dropdown-menu" aria-labelledby="loadsDropdown">
+
+                        <li>
+                            <a class="dropdown-item" href="/views/loads/loads_list.php">
+                                <i class="bi bi-list-ul"></i><span class="menu-title">All Loads</span>
+                            </a>
+                        </li>
+
+                        <li>
+                            <a class="dropdown-item" href="/views/loads/create_load_view.php">
+                                <i class="bi bi-plus-circle"></i><span class="menu-title">Create Load</span> 
+                            </a>
+                        </li>
+
+                    </ul>
                 </li>
 
                 <!-- Customers -->
                 <li class="nav-item">
                     <a class="nav-link tt-nav-link <?= str_contains($_SERVER['REQUEST_URI'], 'customer') ? 'active' : '' ?>"
-                       href="/includes/create_customer_view.php">
-                        <i class="bi bi-people"></i> Create Customer
+                       href="/views/create_customer_view.php">
+                        <i class="bi bi-people"></i><span class="menu-title">Create Customer</span> 
                     </a>
                 </li>
 
                 <!-- Users -->
-                <?php if ($userRole === 'admin'): ?>
-                    <li class="nav-item">
-                        <a class="nav-link tt-nav-link <?= str_contains($_SERVER['REQUEST_URI'], 'manage_users') ? 'active' : '' ?>"
-                           href="/views/manage_users.php">
-                            <i class="bi bi-person-gear"></i> Users
-                        </a>
-                    </li>
-                <?php endif; ?>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle tt-nav-link <?= str_contains($_SERVER['REQUEST_URI'], 'manage_users') ? 'active' : '' ?>"
+                    href="#" id="manage_users_dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-person-gear"></i><span class="menu-title">Users</span> 
+                    </a>
+
+                    <ul class="dropdown-menu" aria-labelledby="manage_users_dropdown">
+
+                        <li>
+                            <a class="dropdown-item" href="/views/manage_users.php">
+                                <i class="bi bi-person-gear"></i><span class="menu-title">Users</span>
+                            </a>
+                        </li>
+
+                        <li>
+                            <a class="dropdown-item" href="/views/create_user_by_admin_view.php">
+                                <i class="bi bi-person-add"></i><span class="menu-title">Create User</span>
+                            </a>
+                        </li>
+
+                    </ul>
+                </li>
 
             </ul>
 

@@ -39,7 +39,6 @@ $drivers = $conn->query("SELECT id, username FROM users WHERE role = 'driver' OR
 <!DOCTYPE html>
 <html>
 <head>
-    <link href="../../styles/css/bootstrap.min.css" rel="stylesheet">
     <title>Edit Load #<?= $loadId ?></title>
 </head>
 <body>

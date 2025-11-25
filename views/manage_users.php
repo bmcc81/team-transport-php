@@ -29,14 +29,8 @@ try {
 <head>
     <meta charset="UTF-8">
     <title>Manage Users - Admin</title>
-    <link href="../styles/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-
-<div class="mb-3">
-    <a href="create_user_by_admin_view.php" class="btn btn-success">+ Create User</a>
-</div>
-
 <h2 class="mb-4">User Management</h2>
 
 <?php if (isset($_SESSION['success'])): ?>

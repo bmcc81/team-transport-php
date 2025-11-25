@@ -11,6 +11,19 @@ body {
 }
 
 /* NAVBAR */
+.navbar-nav li a i::before {
+    font-size: 1.5rem !important;
+}
+
+.navbar-nav li a .menu-title {
+    margin: 0 10px 0;
+    font-size: 1.1rem;
+}
+
+.dropdown-menu {
+    --bs-dropdown-link-hover-bg: #0066cc38;
+}
+
 .tt-navbar {
     background: var(--brand-navy);
     padding: 0.75rem 1rem;

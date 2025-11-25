@@ -18,7 +18,7 @@ $customers = $conn->query("SELECT id, customer_company_name FROM customers ORDER
 $drivers = $conn->query("SELECT id, username FROM users WHERE role = 'driver' ORDER BY username ASC")->fetch_all(MYSQLI_ASSOC);
 ?>
 
-<div class="container mt-4">
+<div>
     <h3 class="mb-4">Create New Load</h3>
 
     <form id="createLoadForm" method="POST" action="/views/loads/handle_create_load.php" enctype="multipart/form-data">
