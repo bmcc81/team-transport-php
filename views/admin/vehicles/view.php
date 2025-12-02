@@ -5,7 +5,7 @@ require __DIR__ . '/../../layout/header.php';
 
 <div class="container-fluid mt-3">
     <div class="row">
-        
+
         <div class="col-12 col-md-3 col-lg-2 mb-3 mb-md-0">
             <?php require __DIR__ . '/../layout/sidebar.php'; ?>
         </div>
@@ -45,6 +45,10 @@ require __DIR__ . '/../../layout/header.php';
 
                     <a class="btn btn-primary mt-3" 
                        href="/admin/vehicles/edit/<?= $vehicle['id'] ?>">Edit Vehicle</a>
+
+                    <a  class="btn btn-danger mt-3 ms-2"
+                        href="/admin/vehicles/delete/<?= $vehicle['id'] ?>">
+                            <i class="bi bi-trash"></i> Delete</a>
 
                 </div>
             </div>

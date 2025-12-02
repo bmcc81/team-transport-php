@@ -81,7 +81,6 @@ class VehicleAdminController extends Controller
         exit;
     }
 
-
     public function edit($id): void
     {
         $vehicle = Vehicle::find((int)$id);
@@ -142,4 +141,57 @@ class VehicleAdminController extends Controller
         header("Location: /admin/vehicles/view/$id");
         exit;
     }
+    public function confirmDelete($id): void
+    {
+        $vehicle = Vehicle::find((int)$id);
+
+        if (!$vehicle) {
+            http_response_code(404);
+            echo "Vehicle not found";
+            return;
+        }
+
+        // Optional: Check if assigned to a driver
+        $assignedDriver = null;
+        if (!empty($vehicle['assigned_driver_id'])) {
+            $pdo = Database::pdo();
+            $stmt = $pdo->prepare("SELECT full_name FROM users WHERE id = ?");
+            $stmt->execute([$vehicle['assigned_driver_id']]);
+            $assignedDriver = $stmt->fetchColumn();
+        }
+
+        $this->view('admin/vehicles/delete', [
+            'vehicle' => $vehicle,
+            'assignedDriver' => $assignedDriver
+        ]);
+    }
+
+    public function delete($id): void
+    {
+        $vehicle = Vehicle::find((int)$id);
+
+        if (!$vehicle) {
+            http_response_code(404);
+            echo "Vehicle not found";
+            return;
+                }
+
+        // Safety: Prevent deletion if assigned to a driver
+        if (!empty($vehicle['assigned_driver_id'])) {
+            $_SESSION['error'] = "Cannot delete a vehicle assigned to a driver.";
+            header("Location: /admin/vehicles/view/$id");
+            exit;
+        }
+
+        $pdo = Database::pdo();
+        $stmt = $pdo->prepare("DELETE FROM vehicles WHERE id = ?");
+        $stmt->execute([$id]);
+
+        $_SESSION['success'] = "Vehicle deleted successfully.";
+
+        header("Location: /admin/vehicles");
+        exit;
+    }   
+
+
 }

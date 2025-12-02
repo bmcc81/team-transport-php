@@ -127,6 +127,9 @@ $router->get('/admin/vehicles/create', 'Admin\\VehicleAdminController@create', [
 $router->post('/admin/vehicles/create', 'Admin\\VehicleAdminController@store', [$auth]);
 $router->get('/admin/vehicles/edit/{id}', 'Admin\\VehicleAdminController@edit', [$auth]);
 $router->post('/admin/vehicles/edit/{id}', 'Admin\\VehicleAdminController@update', [$auth]);
+$router->get('/admin/vehicles/delete/{id}', 'Admin\\VehicleAdminController@confirmDelete', [$auth]);
+$router->post('/admin/vehicles/delete/{id}', 'Admin\\VehicleAdminController@delete', [$auth]);
+
 
 // Loads (admin super-view)
 $router->get('/admin/loads', 'Admin\\LoadAdminController@index', [$auth]);
