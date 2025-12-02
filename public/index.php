@@ -116,8 +116,17 @@ $router->post('/admin/customers/delete/{id}','Admin\\CustomerAdminController@del
 $router->get('/admin/drivers', 'Admin\\DriverAdminController@index', [$auth]);
 $router->get('/admin/drivers/view/{id}', 'Admin\\DriverAdminController@profile', [$auth]);
 
+// Assign vehicle to driver
+$router->get('/admin/drivers/assign-vehicle/{id}', 'Admin\\DriverAdminController@assignVehicleForm', [$auth]);
+$router->post('/admin/drivers/assign-vehicle/{id}', 'Admin\\DriverAdminController@assignVehicleSave', [$auth]);
+
 // Vehicles
 $router->get('/admin/vehicles', 'Admin\\VehicleAdminController@index', [$auth]);
+$router->get('/admin/vehicles/view/{id}', 'Admin\\VehicleAdminController@profile', [$auth]);
+$router->get('/admin/vehicles/create', 'Admin\\VehicleAdminController@create', [$auth]);
+$router->post('/admin/vehicles/create', 'Admin\\VehicleAdminController@store', [$auth]);
+$router->get('/admin/vehicles/edit/{id}', 'Admin\\VehicleAdminController@edit', [$auth]);
+$router->post('/admin/vehicles/edit/{id}', 'Admin\\VehicleAdminController@update', [$auth]);
 
 // Loads (admin super-view)
 $router->get('/admin/loads', 'Admin\\LoadAdminController@index', [$auth]);
