@@ -104,7 +104,13 @@ $router->post('/admin/users/edit/{id}', 'Admin\\UserController@update', [$auth])
 $router->post('/admin/users/delete/{id}', 'Admin\\UserController@delete', [$auth]);
 
 // Customers
-$router->get('/admin/customers', 'Admin\\CustomerAdminController@index', [$auth]);
+// Customers CRUD
+$router->get('/admin/customers',            'Admin\\CustomerAdminController@index',  [$auth]);
+$router->get('/admin/customers/create',     'Admin\\CustomerAdminController@create', [$auth]);
+$router->post('/admin/customers/create',    'Admin\\CustomerAdminController@store',  [$auth]);
+$router->get('/admin/customers/edit/{id}',  'Admin\\CustomerAdminController@edit',   [$auth]);
+$router->post('/admin/customers/edit/{id}', 'Admin\\CustomerAdminController@update', [$auth]);
+$router->post('/admin/customers/delete/{id}','Admin\\CustomerAdminController@delete',[$auth]);
 
 // Drivers
 $router->get('/admin/drivers', 'Admin\\DriverAdminController@index', [$auth]);
