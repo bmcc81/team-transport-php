@@ -1,6 +1,10 @@
 <?php 
 $pageTitle = "Vehicle Details"; 
 require __DIR__ . '/../../layout/header.php';
+
+use App\Models\VehicleMaintenance;
+$maintenanceDue = VehicleMaintenance::countDueOrOverdueForVehicle((int)$vehicle['id']);
+
 ?>
 
 <div class="container-fluid mt-3">
@@ -11,6 +15,17 @@ require __DIR__ . '/../../layout/header.php';
         </div>
 
         <main class="col-md-9 col-lg-10">
+
+            <?php if ($maintenanceDue > 0): ?>
+                <div class="alert alert-warning d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong><?= $maintenanceDue ?></strong> maintenance item(s) due or overdue.
+                    </div>
+                    <a href="/admin/vehicles/<?= $vehicle['id'] ?>/maintenance" class="btn btn-sm btn-outline-dark">
+                        View Maintenance
+                    </a>
+                </div>
+            <?php endif; ?>
 
             <h2 class="h4 mb-3">Vehicle: <?= htmlspecialchars($vehicle['vehicle_number']) ?></h2>
 
@@ -42,6 +57,10 @@ require __DIR__ . '/../../layout/header.php';
                     <?php else: ?>
                         <p class="text-muted">No driver assigned.</p>
                     <?php endif; ?>
+
+                    <a class="btn btn-outline-secondary btn-sm mt-2" 
+                        href="/admin/vehicles/<?= $vehicle['id'] ?>/maintenance">
+                            <i class="bi bi-wrench"></i> Maintenance</a>
 
                     <a class="btn btn-primary mt-3" 
                        href="/admin/vehicles/edit/<?= $vehicle['id'] ?>">Edit Vehicle</a>

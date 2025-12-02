@@ -129,6 +129,12 @@ $router->post('/admin/vehicles/edit/{id}', 'Admin\\VehicleAdminController@update
 $router->get('/admin/vehicles/delete/{id}', 'Admin\\VehicleAdminController@confirmDelete', [$auth]);
 $router->post('/admin/vehicles/delete/{id}', 'Admin\\VehicleAdminController@delete', [$auth]);
 
+// Vehicle maintenance (per vehicle)
+$router->get('/admin/vehicles/{id}/maintenance', 'Admin\\VehicleMaintenanceController@index', [$auth]);
+$router->get('/admin/vehicles/{id}/maintenance/create', 'Admin\\VehicleMaintenanceController@create', [$auth]);
+$router->post('/admin/vehicles/{id}/maintenance/create', 'Admin\\VehicleMaintenanceController@store', [$auth]);
+$router->post('/admin/vehicles/{vehicleId}/maintenance/{id}/complete', 'Admin\\VehicleMaintenanceController@complete', [$auth]);
+$router->post('/admin/vehicles/{vehicleId}/maintenance/{id}/delete', 'Admin\\VehicleMaintenanceController@delete', [$auth]);
 
 // Loads (admin super-view)
 $router->get('/admin/loads', 'Admin\\LoadAdminController@index', [$auth]);
