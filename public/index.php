@@ -114,6 +114,7 @@ $router->post('/admin/customers/delete/{id}','Admin\\CustomerAdminController@del
 
 // Drivers
 $router->get('/admin/drivers', 'Admin\\DriverAdminController@index', [$auth]);
+$router->get('/admin/drivers/view/{id}', 'Admin\\DriverAdminController@profile', [$auth]);
 
 // Vehicles
 $router->get('/admin/vehicles', 'Admin\\VehicleAdminController@index', [$auth]);
