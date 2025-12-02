@@ -82,16 +82,41 @@ $router->post('/loads/update',  'LoadController@update',       [$auth]);
 $router->post('/loads/status',  'LoadController@updateStatus', [$auth]);
 $router->post('/loads/bulk',    'LoadController@bulkActions',  [$auth]);
 
-$router->dispatch($_SERVER['REQUEST_URI'], $_SERVER['REQUEST_METHOD']);
+
 
 /**
  * Admin User Management Routes
  * Only accessible by admin role
  */
 
-$router->get('/admin/users', 'Admin\\UserController@index');
-$router->get('/admin/users/create', 'Admin\\UserController@create');
-$router->post('/admin/users/store', 'Admin\\UserController@store');
-$router->get('/admin/users/edit/{id}', 'Admin\\UserController@edit');
-$router->post('/admin/users/update/{id}', 'Admin\\UserController@update');
-$router->post('/admin/users/delete/{id}', 'Admin\\UserController@delete');
+// Admin panel (all routes protected by admin guard in Router)
+// -----------------------------
+// ADMIN PANEL ROUTES
+// -----------------------------
+$router->get('/admin', 'Admin\\AdminDashboardController@index', [$auth]);
+
+// Users
+$router->get('/admin/users', 'Admin\\UserController@index', [$auth]);
+$router->get('/admin/users/create', 'Admin\\UserController@create', [$auth]);
+$router->post('/admin/users/create', 'Admin\\UserController@store', [$auth]);
+$router->get('/admin/users/edit/{id}', 'Admin\\UserController@edit', [$auth]);
+$router->post('/admin/users/edit/{id}', 'Admin\\UserController@update', [$auth]);
+$router->post('/admin/users/delete/{id}', 'Admin\\UserController@delete', [$auth]);
+
+// Customers
+$router->get('/admin/customers', 'Admin\\CustomerAdminController@index', [$auth]);
+
+// Drivers
+$router->get('/admin/drivers', 'Admin\\DriverAdminController@index', [$auth]);
+
+// Vehicles
+$router->get('/admin/vehicles', 'Admin\\VehicleAdminController@index', [$auth]);
+
+// Loads (admin super-view)
+$router->get('/admin/loads', 'Admin\\LoadAdminController@index', [$auth]);
+
+// Settings
+$router->get('/admin/settings', 'Admin\\SettingsAdminController@index', [$auth]);
+
+$router->dispatch($_SERVER['REQUEST_URI'], $_SERVER['REQUEST_METHOD']);
+
