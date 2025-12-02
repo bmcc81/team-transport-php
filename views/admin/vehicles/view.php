@@ -1,6 +1,10 @@
 <?php 
 $pageTitle = "Vehicle Details"; 
 require __DIR__ . '/../../layout/header.php';
+
+use App\Models\VehicleMaintenance;
+$maintenanceDue = VehicleMaintenance::countDueOrOverdueForVehicle((int)$vehicle['id']);
+
 ?>
 
 <div class="container-fluid mt-3">
@@ -12,7 +16,27 @@ require __DIR__ . '/../../layout/header.php';
 
         <main class="col-md-9 col-lg-10">
 
-            <h2 class="h4 mb-3">Vehicle: <?= htmlspecialchars($vehicle['vehicle_number']) ?></h2>
+            <?php if ($maintenanceDue > 0): ?>
+                <div class="alert alert-warning d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong><?= $maintenanceDue ?></strong> maintenance item(s) due or overdue.
+                    </div>
+                    <a href="/admin/vehicles/<?= $vehicle['id'] ?>/maintenance" class="btn btn-sm btn-outline-dark">
+                        View Maintenance
+                    </a>
+                </div>
+            <?php endif; ?>
+
+             <div class="row">
+                <div class="col-12 col-md-6">
+                    <h2 class="h4 mb-3">Vehicle: <?= htmlspecialchars($vehicle['vehicle_number']) ?></h2>
+                </div>
+                <div class="col-12 col-md-6">
+                    <a class="btn btn-outline-secondary btn-sm mt-2 float-end" 
+                        href="/admin/vehicles/<?= $vehicle['id'] ?>/maintenance">
+                        <i class="bi bi-wrench"></i> Maintenance</a>
+                </div>
+            </div>
 
             <div class="card shadow-sm mb-4">
                 <div class="card-body">
