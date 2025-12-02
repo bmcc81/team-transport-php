@@ -27,7 +27,16 @@ $maintenanceDue = VehicleMaintenance::countDueOrOverdueForVehicle((int)$vehicle[
                 </div>
             <?php endif; ?>
 
-            <h2 class="h4 mb-3">Vehicle: <?= htmlspecialchars($vehicle['vehicle_number']) ?></h2>
+             <div class="row">
+                <div class="col-12 col-md-6">
+                    <h2 class="h4 mb-3">Vehicle: <?= htmlspecialchars($vehicle['vehicle_number']) ?></h2>
+                </div>
+                <div class="col-12 col-md-6">
+                    <a class="btn btn-outline-secondary btn-sm mt-2 float-end" 
+                        href="/admin/vehicles/<?= $vehicle['id'] ?>/maintenance">
+                        <i class="bi bi-wrench"></i> Maintenance</a>
+                </div>
+            </div>
 
             <div class="card shadow-sm mb-4">
                 <div class="card-body">
@@ -57,10 +66,6 @@ $maintenanceDue = VehicleMaintenance::countDueOrOverdueForVehicle((int)$vehicle[
                     <?php else: ?>
                         <p class="text-muted">No driver assigned.</p>
                     <?php endif; ?>
-
-                    <a class="btn btn-outline-secondary btn-sm mt-2" 
-                        href="/admin/vehicles/<?= $vehicle['id'] ?>/maintenance">
-                            <i class="bi bi-wrench"></i> Maintenance</a>
 
                     <a class="btn btn-primary mt-3" 
                        href="/admin/vehicles/edit/<?= $vehicle['id'] ?>">Edit Vehicle</a>
