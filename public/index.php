@@ -83,7 +83,6 @@ $router->post('/loads/status',  'LoadController@updateStatus', [$auth]);
 $router->post('/loads/bulk',    'LoadController@bulkActions',  [$auth]);
 
 
-
 /**
  * Admin User Management Routes
  * Only accessible by admin role
