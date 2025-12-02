@@ -1,0 +1,27 @@
+body {
+    font-size: 0.95rem;
+}
+
+.load-card {
+    border-radius: 0.75rem;
+}
+
+@media (max-width: 576px) {
+    .navbar-brand span {
+        font-size: 0.95rem;
+    }
+}
+
+.avatar-circle {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #6c757d;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    font-size: 0.85rem;
+}
