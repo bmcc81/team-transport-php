@@ -12,70 +12,119 @@ require __DIR__ . '/../../layout/header.php';
 
         <main class="col-md-9 col-lg-10">
 
-            <h2 class="h4 mb-3">Add Vehicle</h2>
+            <h2 class="h4 mb-3">
+                Edit Vehicle: <?= htmlspecialchars($vehicle['vehicle_number'] ?? '') ?>
+            </h2>
 
-            <form method="POST" action="/admin/vehicles/create" class="card p-4 shadow-sm">
+            <form method="POST"
+                  action="/admin/vehicles/edit/<?= htmlspecialchars($vehicle['id']) ?>"
+                  class="card p-4 shadow-sm">
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Vehicle Number</label>
-                        <input type="text" name="vehicle_number" value="<?= htmlspecialchars($vehicle['vehicle_number']) ?>" class="form-control" required>
+                        <input
+                            type="text"
+                            name="vehicle_number"
+                            class="form-control"
+                            required
+                            value="<?= htmlspecialchars($vehicle['vehicle_number'] ?? '') ?>"
+                        >
                     </div>
 
                     <div class="col-md-6 mb-3">
                         <label class="form-label">License Plate</label>
-                        <input type="text" name="license_plate" value="<?= htmlspecialchars($vehicle['license_plate']) ?>" class="form-control" required>
+                        <input
+                            type="text"
+                            name="license_plate"
+                            class="form-control"
+                            required
+                            value="<?= htmlspecialchars($vehicle['license_plate'] ?? '') ?>"
+                        >
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Make</label>
-                        <input type="text" name="make" value="<?= htmlspecialchars($vehicle['make']) ?>" class="form-control" required>
+                        <input
+                            type="text"
+                            name="make"
+                            class="form-control"
+                            required
+                            value="<?= htmlspecialchars($vehicle['make'] ?? '') ?>"
+                        >
                     </div>
 
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Model</label>
-                        <input type="text" name="model" value="<?= htmlspecialchars($vehicle['model']) ?>" class="form-control" required>
+                        <input
+                            type="text"
+                            name="model"
+                            class="form-control"
+                            required
+                            value="<?= htmlspecialchars($vehicle['model'] ?? '') ?>"
+                        >
                     </div>
 
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Year</label>
-                        <input type="number" name="year" value="<?= htmlspecialchars($vehicle['year']) ?>" class="form-control" required>
+                        <input
+                            type="number"
+                            name="year"
+                            class="form-control"
+                            required
+                            value="<?= htmlspecialchars($vehicle['year'] ?? '') ?>"
+                        >
                     </div>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">VIN (optional)</label>
-                    <input type="text" name="vin" value="<?= htmlspecialchars($vehicle['vin']) ?>" class="form-control">
+                    <input
+                        type="text"
+                        name="vin"
+                        class="form-control"
+                        value="<?= htmlspecialchars($vehicle['vin'] ?? '') ?>"
+                    >
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Capacity (optional)</label>
-                    <input type="number" name="capacity" value="<?= htmlspecialchars($vehicle['capacity']) ?>" class="form-control">
+                    <input
+                        type="number"
+                        name="capacity"
+                        class="form-control"
+                        value="<?= htmlspecialchars($vehicle['capacity'] ?? '') ?>"
+                    >
                 </div>
 
                 <div class="mb-3">
-                    <label value="<?= htmlspecialchars($vehicle['status']) ?>" class="form-label">Status</label>
+                    <label class="form-label">Status</label>
+                    <?php $status = $vehicle['status'] ?? 'available'; ?>
                     <select name="status" class="form-select">
-                        <option value="available">Available</option>
-                        <option value="in_use">In Use</option>
-                        <option value="maintenance">Maintenance</option>
+                        <option value="available"   <?= $status === 'available'   ? 'selected' : '' ?>>Available</option>
+                        <option value="in_use"      <?= $status === 'in_use'      ? 'selected' : '' ?>>In Use</option>
+                        <option value="maintenance" <?= $status === 'maintenance' ? 'selected' : '' ?>>Maintenance</option>
                     </select>
                 </div>
 
                 <div class="mb-3">
-                    <label value="<?= htmlspecialchars($vehicle['maintenance_status']) ?>" class="form-label">Maintenance Status</label>
+                    <label class="form-label">Maintenance Status</label>
+                    <?php $mstatus = $vehicle['maintenance_status'] ?? 'ok'; ?>
                     <select name="maintenance_status" class="form-select">
-                        <option value="ok">OK</option>
-                        <option value="inspection_due">Inspection Due</option>
-                        <option value="in_repair">In Repair</option>
-                        <option value="out_of_service">Out of Service</option>
+                        <option value="ok"              <?= $mstatus === 'ok'              ? 'selected' : '' ?>>OK</option>
+                        <option value="inspection_due" <?= $mstatus === 'inspection_due' ? 'selected' : '' ?>>Inspection Due</option>
+                        <option value="in_repair"      <?= $mstatus === 'in_repair'      ? 'selected' : '' ?>>In Repair</option>
+                        <option value="out_of_service" <?= $mstatus === 'out_of_service' ? 'selected' : '' ?>>Out of Service</option>
                     </select>
                 </div>
 
-                <button class="btn btn-primary">Save Vehicle</button>
-                <a href="/admin/vehicles" class="btn btn-secondary">Cancel</a>
+                <button class="btn btn-primary">Save Changes</button>
+                <a href="/admin/vehicles/view/<?= htmlspecialchars($vehicle['id']) ?>"
+                   class="btn btn-secondary">
+                    Cancel
+                </a>
 
             </form>
 
