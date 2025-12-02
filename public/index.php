@@ -82,16 +82,59 @@ $router->post('/loads/update',  'LoadController@update',       [$auth]);
 $router->post('/loads/status',  'LoadController@updateStatus', [$auth]);
 $router->post('/loads/bulk',    'LoadController@bulkActions',  [$auth]);
 
-$router->dispatch($_SERVER['REQUEST_URI'], $_SERVER['REQUEST_METHOD']);
 
 /**
  * Admin User Management Routes
  * Only accessible by admin role
  */
 
-$router->get('/admin/users', 'Admin\\UserController@index');
-$router->get('/admin/users/create', 'Admin\\UserController@create');
-$router->post('/admin/users/store', 'Admin\\UserController@store');
-$router->get('/admin/users/edit/{id}', 'Admin\\UserController@edit');
-$router->post('/admin/users/update/{id}', 'Admin\\UserController@update');
-$router->post('/admin/users/delete/{id}', 'Admin\\UserController@delete');
+// Admin panel (all routes protected by admin guard in Router)
+// -----------------------------
+// ADMIN PANEL ROUTES
+// -----------------------------
+$router->get('/admin', 'Admin\\AdminDashboardController@index', [$auth]);
+
+// Users
+$router->get('/admin/users', 'Admin\\UserController@index', [$auth]);
+$router->get('/admin/users/create', 'Admin\\UserController@create', [$auth]);
+$router->post('/admin/users/create', 'Admin\\UserController@store', [$auth]);
+$router->get('/admin/users/edit/{id}', 'Admin\\UserController@edit', [$auth]);
+$router->post('/admin/users/edit/{id}', 'Admin\\UserController@update', [$auth]);
+$router->post('/admin/users/delete/{id}', 'Admin\\UserController@delete', [$auth]);
+
+// Customers
+// Customers CRUD
+$router->get('/admin/customers',            'Admin\\CustomerAdminController@index',  [$auth]);
+$router->get('/admin/customers/create',     'Admin\\CustomerAdminController@create', [$auth]);
+$router->post('/admin/customers/create',    'Admin\\CustomerAdminController@store',  [$auth]);
+$router->get('/admin/customers/edit/{id}',  'Admin\\CustomerAdminController@edit',   [$auth]);
+$router->post('/admin/customers/edit/{id}', 'Admin\\CustomerAdminController@update', [$auth]);
+$router->post('/admin/customers/delete/{id}','Admin\\CustomerAdminController@delete',[$auth]);
+
+// Drivers
+$router->get('/admin/drivers', 'Admin\\DriverAdminController@index', [$auth]);
+$router->get('/admin/drivers/view/{id}', 'Admin\\DriverAdminController@profile', [$auth]);
+
+// Assign vehicle to driver
+$router->get('/admin/drivers/assign-vehicle/{id}', 'Admin\\DriverAdminController@assignVehicleForm', [$auth]);
+$router->post('/admin/drivers/assign-vehicle/{id}', 'Admin\\DriverAdminController@assignVehicleSave', [$auth]);
+
+// Vehicles
+$router->get('/admin/vehicles', 'Admin\\VehicleAdminController@index', [$auth]);
+$router->get('/admin/vehicles/view/{id}', 'Admin\\VehicleAdminController@profile', [$auth]);
+$router->get('/admin/vehicles/create', 'Admin\\VehicleAdminController@create', [$auth]);
+$router->post('/admin/vehicles/create', 'Admin\\VehicleAdminController@store', [$auth]);
+$router->get('/admin/vehicles/edit/{id}', 'Admin\\VehicleAdminController@edit', [$auth]);
+$router->post('/admin/vehicles/edit/{id}', 'Admin\\VehicleAdminController@update', [$auth]);
+$router->get('/admin/vehicles/delete/{id}', 'Admin\\VehicleAdminController@confirmDelete', [$auth]);
+$router->post('/admin/vehicles/delete/{id}', 'Admin\\VehicleAdminController@delete', [$auth]);
+
+
+// Loads (admin super-view)
+$router->get('/admin/loads', 'Admin\\LoadAdminController@index', [$auth]);
+
+// Settings
+$router->get('/admin/settings', 'Admin\\SettingsAdminController@index', [$auth]);
+
+$router->dispatch($_SERVER['REQUEST_URI'], $_SERVER['REQUEST_METHOD']);
+

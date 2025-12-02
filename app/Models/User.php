@@ -95,5 +95,40 @@ class User
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
+    public static function drivers(): array
+    {
+        $pdo = Database::pdo();
+        $stmt = $pdo->query("
+            SELECT id, username, full_name, email, created_at
+            FROM users
+            WHERE role = 'driver'
+            ORDER BY full_name
+        ");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public static function loadsForDriver(int $id): array
+    {
+        $pdo = Database::pdo();
+        $stmt = $pdo->prepare("
+            SELECT l.*, c.customer_company_name
+            FROM loads l
+            LEFT JOIN customers c ON c.id = l.customer_id
+            WHERE l.assigned_driver_id = ?
+            ORDER BY l.pickup_date DESC
+        ");
+        $stmt->execute([$id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public static function forDriver(int $driverId): ?array
+    {
+        $pdo = Database::pdo();
+        $stmt = $pdo->prepare("SELECT * FROM vehicles WHERE assigned_driver_id = ?");
+        $stmt->execute([$driverId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
 
 }
