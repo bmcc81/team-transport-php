@@ -114,9 +114,13 @@ $router->get('/admin/vehicles/edit/{id}',           'Admin\\VehicleAdminControll
 $router->post('/admin/vehicles/edit/{id}',          'Admin\\VehicleAdminController@update', [$auth]);
 $router->get('/admin/vehicles/delete/{id}',         'Admin\\VehicleAdminController@confirmDelete', [$auth]);
 $router->post('/admin/vehicles/delete/{id}',        'Admin\\VehicleAdminController@delete',        [$auth]);
+$router->get('/admin/vehicles/map',                 'Admin\\VehicleAdminController@map',           [$auth]);
+$router->post('/admin/vehicles/{id}/gps',           'Admin\\VehicleAdminController@updateGps',     [$auth]);
+
 
 // Assign driver to vehicle
 $router->post('/admin/vehicles/{id}/assign-driver', 'Admin\\VehicleAdminController@assignDriver', [$auth]);
+
 
 /*
 |--------------------------------------------------------------------------
