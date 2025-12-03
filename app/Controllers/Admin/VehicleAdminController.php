@@ -307,28 +307,30 @@ class VehicleAdminController extends Controller
     }
 
     public function live(): void
-{
-    $pdo = Database::pdo();
+    {
+        $pdo = Database::pdo();
 
-    $stmt = $pdo->query("
-        SELECT
-            id,
-            vehicle_number,
-            make,
-            model,
-            license_plate,
-            status,
-            latitude,
-            longitude
-        FROM vehicles
-        ORDER BY vehicle_number ASC
-    ");
+        // Only return vehicles currently in service
+        $stmt = $pdo->query("
+            SELECT
+                id,
+                vehicle_number,
+                make,
+                model,
+                license_plate,
+                status,
+                latitude,
+                longitude
+            FROM vehicles
+            WHERE status = 'in_service' OR status = 'in service'
+            ORDER BY vehicle_number ASC
+        ");
 
-    $vehicles = $stmt->fetch(\PDO::FETCH_ASSOC) ? $stmt->fetchAll(\PDO::FETCH_ASSOC) : [];
+        $vehicles = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode($vehicles);
-}
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($vehicles);
+    }
 
     public function liveOne(int $id): void
     {
