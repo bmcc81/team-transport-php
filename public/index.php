@@ -118,11 +118,17 @@ $router->get('/admin/vehicles/map',                 'Admin\\VehicleAdminControll
 $router->post('/admin/vehicles/{id}/gps',           'Admin\\VehicleAdminController@updateGps',     [$auth]);
 $router->post('/admin/vehicles/{id}/gps',           'Admin\\VehicleAdminController@saveGps',       [$auth]);
 
+// --- ADMIN JSON API FOR MAP ---
+$router->get('/admin/api/vehicles/live',            'Admin\\Api\\VehicleApiController@live',       [$auth]);
+$router->get('/admin/api/vehicles/{id}/history',    'Admin\\Api\\VehicleApiController@history',    [$auth]);
+
 // Vehicles - live tracking JSON
 $router->get('/admin/vehicles/live',                'Admin\\VehicleAdminController@live',          [$auth]);
 $router->get('/admin/vehicles/{id}/live',           'Admin\\VehicleAdminController@liveOne',       [$auth]);
 $router->get('/admin/vehicles/{id}/breadcrumbs',    'Admin\\VehicleAdminController@breadcrumbs',   [$auth]);
 
+// Vehicle GPS history / trip playback
+$router->get('/admin/vehicles/{id}/trip',           'Admin\\VehicleAdminController@trip',          [$auth]);
 
 // Assign driver to vehicle
 $router->post('/admin/vehicles/{id}/assign-driver', 'Admin\\VehicleAdminController@assignDriver', [$auth]);

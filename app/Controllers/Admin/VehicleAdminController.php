@@ -224,14 +224,15 @@ class VehicleAdminController extends Controller
     {
         $pdo = Database::pdo();
 
-        // Fetch all vehicles with (optional) coords
+        // Fetch all vehicles with valid coords
         $stmt = $pdo->query("
             SELECT id, vehicle_number, make, model, license_plate, status, latitude, longitude
             FROM vehicles
+            WHERE latitude IS NOT NULL AND longitude IS NOT NULL
             ORDER BY vehicle_number ASC
         ");
 
-        $vehicles = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $vehicles = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $this->view('admin/vehicles/map', compact('vehicles'));
     }
@@ -384,5 +385,35 @@ class VehicleAdminController extends Controller
         header('Content-Type: application/json');
         echo json_encode($points);
     }   
+
+    public function trip(int $vehicleId): void
+    {
+        $pdo = Database::pdo();
+
+        $date = $_GET['date'] ?? null;
+        if (!$date) {
+            http_response_code(400);
+            echo "Missing date";
+            return;
+        }
+
+        // Simple day window
+        $start = $date . ' 00:00:00';
+        $end   = $date . ' 23:59:59';
+
+        $stmt = $pdo->prepare("
+            SELECT latitude, longitude, created_at
+            FROM vehicle_gps_history
+            WHERE vehicle_id = ?
+            AND created_at BETWEEN ? AND ?
+            ORDER BY created_at ASC
+        ");
+        $stmt->execute([$vehicleId, $start, $end]);
+
+        $points = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($points);
+    }
 
 }
