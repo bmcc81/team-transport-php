@@ -2,7 +2,6 @@
 $pageTitle = "Vehicle Map";
 require __DIR__ . '/../../layout/header.php';
 ?>
-
 <div class="container-fluid mt-3">
     <div class="row">
 
@@ -31,8 +30,8 @@ require __DIR__ . '/../../layout/header.php';
                             Vehicles
                         </div>
                         <div class="card-body p-0">
-                            <div class="list-group list-group-flush" style="max-height: 70vh; overflow-y: auto;">
-                                <?php if (!empty($vehicles)): ?>
+                            <div class="list-group list-group-flush" id="vehicle-list" style="max-height: 70vh; overflow-y: auto;">
+                                <?php if (!empty($vehicles ?? [])): ?>
                                     <?php foreach ($vehicles as $v): ?>
                                         <button
                                             type="button"
@@ -49,18 +48,9 @@ require __DIR__ . '/../../layout/header.php';
                                                     <?= htmlspecialchars($v['license_plate']) ?>
                                                 </small>
                                             </div>
-                                            <span>
-                                                <?php if ($v['status'] === 'available'): ?>
-                                                    <span class="badge bg-success">Avail</span>
-                                                <?php elseif ($v['status'] === 'in_service'): ?>
-                                                    <span class="badge bg-primary">In Service</span>
-                                                <?php elseif ($v['status'] === 'maintenance'): ?>
-                                                    <span class="badge bg-warning text-dark">Maint</span>
-                                                <?php else: ?>
-                                                    <span class="badge bg-secondary">
-                                                        <?= htmlspecialchars($v['status']) ?>
-                                                    </span>
-                                                <?php endif; ?>
+                                            <span class="badge bg-secondary vehicle-status-badge"
+                                                  data-status-for="<?= $v['id'] ?>">
+                                                <?= htmlspecialchars($v['status']) ?>
                                             </span>
                                         </button>
                                     <?php endforeach; ?>
@@ -79,7 +69,7 @@ require __DIR__ . '/../../layout/header.php';
                     <div class="card shadow-sm h-100">
                         <div class="card-header bg-light fw-semibold d-flex justify-content-between align-items-center">
                             <span>Map</span>
-                            <small class="text-muted">Zoom & click markers to see vehicles</small>
+                            <small class="text-muted">Auto-updating every 5 seconds</small>
                         </div>
                         <div class="card-body p-0">
                             <div id="vehicle-map" style="height: 70vh; width: 100%;"></div>
@@ -93,88 +83,116 @@ require __DIR__ . '/../../layout/header.php';
     </div>
 </div>
 
-<?php require __DIR__ . '/../../layout/footer.php'; ?>
-
-<!-- Leaflet CSS & JS (CDN) -->
+<!-- Leaflet CSS & JS -->
 <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
     crossorigin=""
 />
 <script
     src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
     crossorigin=""
 ></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Init Leaflet map
+    const mapEl = document.getElementById('vehicle-map');
+    if (!mapEl) return;
+
     const map = L.map('vehicle-map');
     const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap'
     }).addTo(map);
 
-    // PHP → JS data
-    const vehicles = <?=
-        json_encode(array_map(function ($v) {
-            return [
-                'id'        => (int)$v['id'],
-                'number'    => $v['vehicle_number'],
-                'make'      => $v['make'],
-                'model'     => $v['model'],
-                'plate'     => $v['license_plate'],
-                'status'    => $v['status'],
-                'lat'       => isset($v['latitude']) ? (float)$v['latitude'] : null,
-                'lng'       => isset($v['longitude']) ? (float)$v['longitude'] : null,
-            ];
-        }, $vehicles), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
-    ?>;
-
     const markers = {};
-    const bounds = [];
+    let boundsInitialized = false;
 
-    vehicles.forEach(v => {
-        if (v.lat === null || v.lng === null) {
-            return; // skip vehicles without coordinates
+    function updateMarkers(vehicles) {
+        const bounds = [];
+
+        vehicles.forEach(v => {
+            if (!v.latitude || !v.longitude) return;
+
+            const lat = parseFloat(v.latitude);
+            const lng = parseFloat(v.longitude);
+            if (isNaN(lat) || isNaN(lng)) return;
+
+            // Update / create marker
+            if (markers[v.id]) {
+                markers[v.id].setLatLng([lat, lng]);
+            } else {
+                const marker = L.marker([lat, lng])
+                    .addTo(map)
+                    .bindPopup(
+                        `<strong>${v.vehicle_number}</strong><br>` +
+                        `${v.make} ${v.model}<br>` +
+                        `Plate: ${v.license_plate}<br>` +
+                        `Status: ${v.status}`
+                    );
+                markers[v.id] = marker;
+            }
+
+            bounds.push([lat, lng]);
+
+            // Update status badge in list
+            const badge = document.querySelector(`.vehicle-status-badge[data-status-for="${v.id}"]`);
+            if (badge) {
+                badge.textContent = v.status;
+                badge.className = 'badge vehicle-status-badge ' + statusToBadgeClass(v.status);
+            }
+        });
+
+        if (bounds.length && !boundsInitialized) {
+            map.fitBounds(bounds, { padding: [30, 30] });
+            boundsInitialized = true;
         }
-
-        const marker = L.marker([v.lat, v.lng])
-            .addTo(map)
-            .bindPopup(
-                `<strong>${v.number}</strong><br>` +
-                `${v.make} ${v.model}<br>` +
-                `Plate: ${v.plate}<br>` +
-                `Status: ${v.status}`
-            );
-
-        markers[v.id] = marker;
-        bounds.push([v.lat, v.lng]);
-    });
-
-    if (bounds.length > 0) {
-        map.fitBounds(bounds, {padding: [30, 30]});
-    } else {
-        // Default center (e.g., Montreal area)
-        map.setView([45.5019, -73.5674], 10);
     }
 
-    // Highlight marker when clicking vehicle row
+    function statusToBadgeClass(status) {
+        switch ((status || '').toLowerCase()) {
+            case 'available':   return 'bg-success';
+            case 'in_service':
+            case 'in service':  return 'bg-primary';
+            case 'maintenance': return 'bg-warning text-dark';
+            default:            return 'bg-secondary';
+        }
+    }
+
+    // Click list row -> focus marker
     document.querySelectorAll('.vehicle-row').forEach(row => {
         row.addEventListener('click', () => {
-            const id = parseInt(row.getAttribute('data-vehicle-id'), 10);
+            const id = row.getAttribute('data-vehicle-id');
             const marker = markers[id];
 
             document.querySelectorAll('.vehicle-row').forEach(r => r.classList.remove('active'));
             row.classList.add('active');
 
             if (marker) {
-                map.setView(marker.getLatLng(), 13);
+                const pos = marker.getLatLng();
+                map.setView(pos, 14);
                 marker.openPopup();
             }
         });
     });
+
+    async function fetchLiveData() {
+        try {
+            const res = await fetch('/admin/vehicles/live', { cache: 'no-store' });
+            if (!res.ok) return;
+            const vehicles = await res.json();
+            updateMarkers(vehicles);
+        } catch (e) {
+            console.error('Live tracking error:', e);
+        }
+    }
+
+    // Initial load
+    fetchLiveData();
+
+    // Poll every 5 seconds
+    setInterval(fetchLiveData, 5000);
 });
 </script>
+
+<?php require __DIR__ . '/../../layout/footer.php'; ?>

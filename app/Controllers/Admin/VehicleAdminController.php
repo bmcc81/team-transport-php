@@ -306,4 +306,54 @@ class VehicleAdminController extends Controller
         echo "OK"; // AJAX success response
     }
 
+    public function live(): void
+{
+    $pdo = Database::pdo();
+
+    $stmt = $pdo->query("
+        SELECT
+            id,
+            vehicle_number,
+            make,
+            model,
+            license_plate,
+            status,
+            latitude,
+            longitude
+        FROM vehicles
+        ORDER BY vehicle_number ASC
+    ");
+
+    $vehicles = $stmt->fetch(\PDO::FETCH_ASSOC) ? $stmt->fetchAll(\PDO::FETCH_ASSOC) : [];
+
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($vehicles);
+}
+
+    public function liveOne(int $id): void
+    {
+        $pdo = Database::pdo();
+
+        $stmt = $pdo->prepare("
+            SELECT
+                id,
+                vehicle_number,
+                make,
+                model,
+                license_plate,
+                status,
+                latitude,
+                longitude
+            FROM vehicles
+            WHERE id = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$id]);
+
+        $vehicle = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($vehicle ?: null);
+    }
+
 }
