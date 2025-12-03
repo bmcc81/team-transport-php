@@ -121,6 +121,7 @@ $router->post('/admin/vehicles/{id}/gps',           'Admin\\VehicleAdminControll
 // Vehicles - live tracking JSON
 $router->get('/admin/vehicles/live',                'Admin\\VehicleAdminController@live',          [$auth]);
 $router->get('/admin/vehicles/{id}/live',           'Admin\\VehicleAdminController@liveOne',       [$auth]);
+$router->get('/admin/vehicles/{id}/breadcrumbs',    'Admin\\VehicleAdminController@breadcrumbs',   [$auth]);
 
 
 // Assign driver to vehicle
