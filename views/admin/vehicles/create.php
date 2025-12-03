@@ -1,6 +1,6 @@
-<?php 
-$pageTitle = "Add Vehicle"; 
-require __DIR__ . '/../../layout/header.php'; 
+<?php
+$pageTitle = "Add Vehicle";
+require __DIR__ . '/../../layout/header.php';
 ?>
 
 <div class="container-fluid mt-3">
@@ -11,7 +11,6 @@ require __DIR__ . '/../../layout/header.php';
         </div>
 
         <main class="col-md-9 col-lg-10">
-
             <h2 class="h4 mb-3">Add Vehicle</h2>
 
             <form method="POST" action="/admin/vehicles/create" class="card p-4 shadow-sm">
@@ -33,12 +32,10 @@ require __DIR__ . '/../../layout/header.php';
                         <label class="form-label">Make</label>
                         <input type="text" name="make" class="form-control" required>
                     </div>
-
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Model</label>
                         <input type="text" name="model" class="form-control" required>
                     </div>
-
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Year</label>
                         <input type="number" name="year" class="form-control" required>
@@ -59,7 +56,7 @@ require __DIR__ . '/../../layout/header.php';
                     <label class="form-label">Status</label>
                     <select name="status" class="form-select">
                         <option value="available">Available</option>
-                        <option value="in_use">In Use</option>
+                        <option value="in_service">In Service</option>
                         <option value="maintenance">Maintenance</option>
                     </select>
                 </div>
@@ -75,10 +72,8 @@ require __DIR__ . '/../../layout/header.php';
                 </div>
 
                 <button class="btn btn-primary">Save Vehicle</button>
-                <a href="/admin/vehicles" class="btn btn-secondary">Cancel</a>
-
+                <a href="/admin/vehicles" class="btn btn-secondary ms-2">Cancel</a>
             </form>
-
         </main>
     </div>
 </div>

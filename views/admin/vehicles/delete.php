@@ -1,6 +1,6 @@
-<?php 
-$pageTitle = "Delete Vehicle"; 
-require __DIR__ . '/../../layout/header.php'; 
+<?php
+$pageTitle = "Delete Vehicle";
+require __DIR__ . '/../../layout/header.php';
 ?>
 
 <div class="container-fluid mt-3">
@@ -12,7 +12,7 @@ require __DIR__ . '/../../layout/header.php';
 
         <main class="col-md-9 col-lg-10">
 
-            <div class="card shadow-sm" style="max-width: 600px">
+            <div class="card shadow-sm" style="max-width: 600px;">
                 <div class="card-body">
 
                     <h3 class="h5 text-danger mb-3">
@@ -24,25 +24,23 @@ require __DIR__ . '/../../layout/header.php';
 
                     <ul>
                         <li><strong>Vehicle #:</strong> <?= htmlspecialchars($vehicle['vehicle_number']) ?></li>
-                        <li><strong>Make/Model:</strong> <?= htmlspecialchars($vehicle['make'].' '.$vehicle['model']) ?></li>
+                        <li><strong>Make/Model:</strong> <?= htmlspecialchars($vehicle['make'] . ' ' . $vehicle['model']) ?></li>
                         <li><strong>License Plate:</strong> <?= htmlspecialchars($vehicle['license_plate']) ?></li>
                     </ul>
 
-                    <?php if (!empty($assignedDriver)): ?>
+                    <?php if (!empty($vehicle['assigned_driver_id'])): ?>
                         <div class="alert alert-warning">
-                            <strong>Warning:</strong> This vehicle is currently assigned to driver:
-                            <br>
-                            <strong><?= htmlspecialchars($assignedDriver) ?></strong>
-                            <br><br>
-                            You must unassign it before deleting.
+                            <strong>Warning:</strong> This vehicle is currently assigned to a driver.
+                            <br>You must unassign it before deleting.
                         </div>
+
                         <a href="/admin/vehicles/view/<?= $vehicle['id'] ?>" class="btn btn-secondary">
                             Back
                         </a>
                     <?php else: ?>
                         <form method="POST" action="/admin/vehicles/delete/<?= $vehicle['id'] ?>">
                             <button class="btn btn-danger">Yes, Delete Vehicle</button>
-                            <a href="/admin/vehicles/view/<?= $vehicle['id'] ?>" class="btn btn-secondary">
+                            <a href="/admin/vehicles/view/<?= $vehicle['id'] ?>" class="btn btn-secondary ms-2">
                                 Cancel
                             </a>
                         </form>
@@ -52,7 +50,6 @@ require __DIR__ . '/../../layout/header.php';
             </div>
 
         </main>
-
     </div>
 </div>
 
