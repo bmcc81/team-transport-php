@@ -143,6 +143,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 badge.textContent = v.status;
                 badge.className = 'badge vehicle-status-badge ' + statusToBadgeClass(v.status);
             }
+
+            updateBreadcrumbs(v.id);
         });
 
         if (bounds.length && !boundsInitialized) {
@@ -188,6 +190,34 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error('Live tracking error:', e);
         }
     }
+
+    const breadcrumbLines = {};
+
+    async function updateBreadcrumbs(vehicleId) {
+        try {
+            const res = await fetch(`/admin/vehicles/${vehicleId}/breadcrumbs`, { cache: "no-store" });
+            const points = await res.json();
+
+            if (!Array.isArray(points) || points.length < 2) return;
+
+            const latlngs = points.map(p => [parseFloat(p.latitude), parseFloat(p.longitude)]);
+
+            // Remove old line
+            if (breadcrumbLines[vehicleId]) {
+                map.removeLayer(breadcrumbLines[vehicleId]);
+            }
+
+            // Draw new line
+            breadcrumbLines[vehicleId] = L.polyline(latlngs, {
+                color: '#007bff',
+                weight: 3,
+                opacity: 0.7
+            }).addTo(map);
+
+        } catch (e) {
+            console.error("Breadcrumb update failed:", e);
+        }
+    }       
 
     // Initial load
     fetchLiveData();

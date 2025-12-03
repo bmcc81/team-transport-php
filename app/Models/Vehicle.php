@@ -167,4 +167,24 @@ class Vehicle
         return $stmt->execute([$lat, $lng, $id]);
     }
 
+    public function breadcrumbs(int $vehicleId): void
+    {
+        $pdo = Database::pdo();
+
+        // Get last 100 breadcrumb points
+        $stmt = $pdo->prepare("
+            SELECT latitude, longitude
+            FROM vehicle_gps_history
+            WHERE vehicle_id = ?
+            ORDER BY id DESC
+            LIMIT 100
+        ");
+        $stmt->execute([$vehicleId]);
+
+        $points = array_reverse($stmt->fetchAll(\PDO::FETCH_ASSOC));
+
+        header('Content-Type: application/json');
+        echo json_encode($points);
+    }
+
 }

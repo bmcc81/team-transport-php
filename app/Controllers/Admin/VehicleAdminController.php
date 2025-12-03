@@ -295,15 +295,22 @@ class VehicleAdminController extends Controller
             return;
         }
 
+        // Update vehicles table
         $stmt = $pdo->prepare("
             UPDATE vehicles
             SET latitude = ?, longitude = ?, updated_at = NOW()
             WHERE id = ?
         ");
-
         $stmt->execute([$lat, $lng, $vehicleId]);
 
-        echo "OK"; // AJAX success response
+        // Log GPS breadcrumb
+        $log = $pdo->prepare("
+            INSERT INTO vehicle_gps_history (vehicle_id, latitude, longitude)
+            VALUES (?, ?, ?)
+        ");
+        $log->execute([$vehicleId, $lat, $lng]);
+
+        echo "OK";
     }
 
     public function live(): void
