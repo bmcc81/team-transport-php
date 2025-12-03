@@ -365,4 +365,24 @@ class VehicleAdminController extends Controller
         echo json_encode($vehicle ?: null);
     }
 
+    public function breadcrumbs(int $vehicleId): void
+    {
+        $pdo = Database::pdo();
+
+        // Get the last 100 trail points with timestamp
+        $stmt = $pdo->prepare("
+            SELECT latitude, longitude, created_at
+            FROM vehicle_gps_history
+            WHERE vehicle_id = ?
+            ORDER BY id DESC
+            LIMIT 100
+        ");
+        $stmt->execute([$vehicleId]);
+
+        $points = array_reverse($stmt->fetchAll(\PDO::FETCH_ASSOC));
+
+        header('Content-Type: application/json');
+        echo json_encode($points);
+    }   
+
 }
