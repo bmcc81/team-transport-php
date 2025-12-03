@@ -33,6 +33,8 @@ require __DIR__ . '/../../layout/header.php';
                             <div class="list-group list-group-flush" id="vehicle-list" style="max-height: 70vh; overflow-y: auto;">
                                 <?php if (!empty($vehicles ?? [])): ?>
                                     <?php foreach ($vehicles as $v): ?>
+                                        <?php if (!in_array(strtolower($v['status']), ['in_service', 'in service'])) continue; ?>
+
                                         <button
                                             type="button"
                                             class="list-group-item list-group-item-action d-flex justify-content-between align-items-start vehicle-row"
