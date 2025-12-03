@@ -219,4 +219,50 @@ class VehicleAdminController extends Controller
         header("Location: /admin/vehicles/view/$id");
         exit;
     }
+
+    public function map(): void
+    {
+        $pdo = Database::pdo();
+
+        // Fetch all vehicles with (optional) coords
+        $stmt = $pdo->query("
+            SELECT id, vehicle_number, make, model, license_plate, status, latitude, longitude
+            FROM vehicles
+            ORDER BY vehicle_number ASC
+        ");
+
+        $vehicles = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $this->view('admin/vehicles/map', compact('vehicles'));
+    }
+
+    public function updateGps($id): void
+    {
+        $pdo = Database::pdo();
+
+        $lat = $_POST['latitude'] ?? null;
+        $lng = $_POST['longitude'] ?? null;
+
+        // Validate numeric
+        if ($lat !== null && !is_numeric($lat)) $lat = null;
+        if ($lng !== null && !is_numeric($lng)) $lng = null;
+
+        $stmt = $pdo->prepare("
+            UPDATE vehicles
+            SET latitude = :lat, longitude = :lng
+            WHERE id = :id
+        ");
+
+        $stmt->execute([
+            ':lat' => $lat,
+            ':lng' => $lng,
+            ':id'  => $id
+        ]);
+
+        // Redirect back to vehicle page
+        header("Location: /admin/vehicles/view/$id");
+        exit;
+    }
+
+
 }

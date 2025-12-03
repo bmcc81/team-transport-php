@@ -223,9 +223,172 @@ foreach ($drivers as $d) $driverMap[$d['id']] = $d['full_name'];
                 </div>
             </div>
 
+            <!-- GPS COORDINATES -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light fw-semibold">
+                    GPS Coordinates
+                </div>
+
+                <div class="card-body">
+
+                    <form method="POST" action="/admin/vehicles/<?= $vehicle['id'] ?>/gps" class="row g-3">
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Latitude</label>
+                            <input type="text"
+                                name="latitude"
+                                class="form-control"
+                                value="<?= htmlspecialchars($vehicle['latitude'] ?? '') ?>"
+                                placeholder="e.g., 45.5019">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Longitude</label>
+                            <input type="text"
+                                name="longitude"
+                                class="form-control"
+                                value="<?= htmlspecialchars($vehicle['longitude'] ?? '') ?>"
+                                placeholder="e.g., -73.5674">
+                        </div>
+
+                        <div class="col-12">
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary">
+                                    <i class="bi bi-geo-alt"></i> Save GPS
+                                </button>
+
+                                <button type="button" id="use-my-location" class="btn btn-outline-secondary">
+                                    <i class="bi bi-crosshair"></i> Use My Location
+                                </button>
+                            </div>
+
+                            <div id="gps-loading" class="mt-2 text-muted small" style="display:none;">
+                                <i class="bi bi-hourglass-split"></i> Detecting location...
+                            </div>
+
+                            <div id="gps-error" class="mt-2 text-danger small" style="display:none;"></div>
+                        </div>
+
+                    </form>
+
+                    <?php if (!empty($vehicle['latitude']) && !empty($vehicle['longitude'])): ?>
+                        <div class="mt-3 small text-muted">
+                            Current location: <?= $vehicle['latitude'] ?>, <?= $vehicle['longitude'] ?>
+                        </div>
+                    <?php endif; ?>
+
+                </div>
+            </div>
+
+            <!-- VEHICLE MAP -->
+            <?php if (!empty($vehicle['latitude']) && !empty($vehicle['longitude'])): ?>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light fw-semibold">
+                    Vehicle Location
+                </div>
+                <div class="card-body p-0">
+                    <div id="vehicle-map" style="height: 350px; width: 100%;"></div>
+                </div>
+            </div>
+
+            <!-- Leaflet CSS -->
+            <link
+                rel="stylesheet"
+                href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+                integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+                crossorigin=""
+            />
+
+            <!-- Leaflet JS -->
+            <script
+                src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+                integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+                crossorigin=""
+            ></script>
+
+            <script>
+            document.addEventListener("DOMContentLoaded", function() {
+
+                // Pull PHP values into JS
+                const lat = parseFloat("<?= $vehicle['latitude'] ?>");
+                const lng = parseFloat("<?= $vehicle['longitude'] ?>");
+
+                // Init map
+                const map = L.map('vehicle-map').setView([lat, lng], 14);
+
+                // Tile layer
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(map);
+
+                // Marker with popup
+                L.marker([lat, lng])
+                    .addTo(map)
+                    .bindPopup(
+                        `<strong><?= htmlspecialchars($vehicle['vehicle_number']) ?></strong><br>` +
+                        "<?= htmlspecialchars($vehicle['make'] . ' ' . $vehicle['model']) ?><br>" +
+                        "Plate: <?= htmlspecialchars($vehicle['license_plate']) ?>"
+                    )
+                    .openPopup();
+            });
+            </script>
+
+            <?php endif; ?>
+
+
         </main>
 
     </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+    const btn = document.getElementById("use-my-location");
+    const loading = document.getElementById("gps-loading");
+    const errorBox = document.getElementById("gps-error");
+
+    const latInput = document.querySelector("input[name='latitude']");
+    const lngInput = document.querySelector("input[name='longitude']");
+
+    btn.addEventListener("click", () => {
+        errorBox.style.display = "none";
+        loading.style.display = "block";
+
+        if (!navigator.geolocation) {
+            loading.style.display = "none";
+            errorBox.innerText = "Geolocation is not supported on this device.";
+            errorBox.style.display = "block";
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const lat = pos.coords.latitude.toFixed(7);
+                const lng = pos.coords.longitude.toFixed(7);
+
+                latInput.value = lat;
+                lngInput.value = lng;
+
+                loading.style.display = "none";
+            },
+            (err) => {
+                loading.style.display = "none";
+                errorBox.innerText = "Unable to get location: " + err.message;
+                errorBox.style.display = "block";
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 8000,
+                maximumAge: 0
+            }
+        );
+    });
+
+});
+</script>
+
 
 <?php require __DIR__ . '/../../layout/footer.php'; ?>
