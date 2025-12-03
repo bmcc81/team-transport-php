@@ -264,5 +264,23 @@ class VehicleAdminController extends Controller
         exit;
     }
 
+    public function saveGps(int $id): void
+    {
+        $pdo = Database::pdo();
+
+        $stmt = $pdo->prepare("
+            UPDATE vehicles 
+            SET latitude = ?, longitude = ?
+            WHERE id = ?
+        ");
+
+        $stmt->execute([
+            $_POST['latitude'] ?? null,
+            $_POST['longitude'] ?? null,
+            $id
+        ]);
+
+        echo "OK";
+    }
 
 }
