@@ -282,5 +282,28 @@ class VehicleAdminController extends Controller
 
         echo "OK";
     }
+    public function gpsUpdate(int $vehicleId): void
+    {
+        $pdo = Database::pdo();
+
+        $lat = $_POST['latitude'] ?? null;
+        $lng = $_POST['longitude'] ?? null;
+
+        if ($lat === null || $lng === null) {
+            http_response_code(400);
+            echo "Missing coordinates";
+            return;
+        }
+
+        $stmt = $pdo->prepare("
+            UPDATE vehicles
+            SET latitude = ?, longitude = ?, updated_at = NOW()
+            WHERE id = ?
+        ");
+
+        $stmt->execute([$lat, $lng, $vehicleId]);
+
+        echo "OK"; // AJAX success response
+    }
 
 }

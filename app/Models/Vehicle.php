@@ -153,4 +153,18 @@ class Vehicle
         $stmt = $pdo->prepare("DELETE FROM vehicles WHERE id = ?");
         return $stmt->execute([$id]);
     }
+
+    public static function updateGPS(int $id, float $lat, float $lng): bool
+    {
+        $pdo = Database::pdo();
+
+        $stmt = $pdo->prepare("
+            UPDATE vehicles
+            SET latitude = ?, longitude = ?, updated_at = NOW()
+            WHERE id = ?
+        ");
+
+        return $stmt->execute([$lat, $lng, $id]);
+    }
+
 }
