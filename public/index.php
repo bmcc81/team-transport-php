@@ -2,6 +2,9 @@
 declare(strict_types=1);
 
 session_start();
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
 // Autoload
 spl_autoload_register(function (string $class) {
@@ -105,6 +108,13 @@ $router->post('/admin/drivers/assign-vehicle/{id}','Admin\\DriverAdminController
 | ADMIN: VEHICLES
 |--------------------------------------------------------------------------
 */
+
+// Vehicles - live tracking JSON
+$router->get('/admin/vehicles/live',                'Admin\\VehicleAdminController@live',          [$auth]);
+$router->get('/admin/vehicles/{id}/live',           'Admin\\VehicleAdminController@liveOne',       [$auth]);
+$router->get('/admin/vehicles/{id}/breadcrumbs',    'Admin\\VehicleAdminController@breadcrumbs',   [$auth]);
+$router->get('/admin/vehicles/map',                 'Admin\\VehicleAdminController@map',            [$auth]);
+
 $router->get('/admin/vehicles',                     'Admin\\VehicleAdminController@index', [$auth]);
 $router->get('/admin/vehicles/{id}',                'Admin\\VehicleAdminController@profile', [$auth]);
 $router->get('/admin/vehicles/view/{id}',           'Admin\\VehicleAdminController@profile', [$auth]);
@@ -117,11 +127,6 @@ $router->post('/admin/vehicles/delete/{id}',        'Admin\\VehicleAdminControll
 $router->get('/admin/vehicles/map',                 'Admin\\VehicleAdminController@map',           [$auth]);
 $router->post('/admin/vehicles/{id}/gps',           'Admin\\VehicleAdminController@updateGps',     [$auth]);
 $router->post('/admin/vehicles/{id}/gps',           'Admin\\VehicleAdminController@saveGps',       [$auth]);
-
-// Vehicles - live tracking JSON
-$router->get('/admin/vehicles/live',                'Admin\\VehicleAdminController@live',          [$auth]);
-$router->get('/admin/vehicles/{id}/live',           'Admin\\VehicleAdminController@liveOne',       [$auth]);
-$router->get('/admin/vehicles/{id}/breadcrumbs',    'Admin\\VehicleAdminController@breadcrumbs',   [$auth]);
 
 
 // Assign driver to vehicle

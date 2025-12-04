@@ -231,7 +231,7 @@ class VehicleAdminController extends Controller
             ORDER BY vehicle_number ASC
         ");
 
-        $vehicles = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $vehicles = $stmt->fetchAll(mode: \PDO::FETCH_ASSOC);
 
         $this->view('admin/vehicles/map', compact('vehicles'));
     }
