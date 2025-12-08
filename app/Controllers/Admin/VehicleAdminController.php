@@ -4,6 +4,7 @@ namespace App\Controllers\Admin;
 use App\Core\Controller;
 use App\Database\Database;
 use App\Models\Vehicle;
+use App\Models\Geofence;
 
 class VehicleAdminController extends Controller
 {
@@ -139,5 +140,23 @@ class VehicleAdminController extends Controller
         }
 
         $this->redirect("/admin/vehicles/view/$id");
+    }
+
+    public function map(): void
+    {
+        $pdo = Database::pdo();
+
+        // Fetch vehicles for markers
+        $stmt = $pdo->query("
+            SELECT id, vehicle_number, make, model, license_plate, status, latitude, longitude
+            FROM vehicles
+            ORDER BY vehicle_number ASC
+        ");
+        $vehicles = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        // Fetch ACTIVE geofences
+        $geofences = Geofence::active();
+
+        $this->view('admin/vehicles/map', compact('vehicles', 'geofences'));
     }
 }
