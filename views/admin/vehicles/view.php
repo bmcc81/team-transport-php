@@ -249,7 +249,7 @@ foreach ($drivers as $d) $driverMap[$d['id']] = $d['full_name'];
                     </form>
 
                     <!-- LIVE MAP -->
-                    <div id="vehicleMap" style="height: 350px;" class="mt-3 rounded border"></div>
+                    <div id="vehicleMap" style="height: 650px;" class="mt-3 rounded border"></div>
 
                 </div>
             </div>
