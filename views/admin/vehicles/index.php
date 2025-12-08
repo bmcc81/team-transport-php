@@ -1,5 +1,6 @@
 <?php
 $pageTitle = "Vehicles";
+var_dump($_SESSION);
 require __DIR__ . '/../../layout/header.php';
 
 use App\Models\VehicleMaintenance;

@@ -32,6 +32,8 @@ if (file_exists($envFile)) {
 use App\Core\Router;
 use App\Database\Database;
 use App\Middleware\AuthMiddleware;
+use App\Controllers\Admin\TelemetryController;
+
 
 Database::init([
     'host' => $_ENV['DB_HOST'] ?? '127.0.0.1',
@@ -98,51 +100,48 @@ $router->post('/admin/customers/delete/{id}','Admin\\CustomerAdminController@del
 | ADMIN: DRIVERS
 |--------------------------------------------------------------------------
 */
-$router->get('/admin/drivers',                'Admin\\DriverAdminController@index',          [$auth]);
-$router->get('/admin/drivers/view/{id}',      'Admin\\DriverAdminController@profile',        [$auth]);
+$router->get('/admin/drivers',                  'Admin\\DriverAdminController@index',          [$auth]);
+$router->get('/admin/drivers/view/{id}',        'Admin\\DriverAdminController@profile',        [$auth]);
 $router->get('/admin/drivers/assign-vehicle/{id}', 'Admin\\DriverAdminController@assignVehicleForm', [$auth]);
 $router->post('/admin/drivers/assign-vehicle/{id}','Admin\\DriverAdminController@assignVehicleSave', [$auth]);
 
 /*
 |--------------------------------------------------------------------------
-| ADMIN: VEHICLES
+| TELEMETRY (REAL-TIME MAP MUST BE FIRST)
 |--------------------------------------------------------------------------
 */
+$router->get('/admin/vehicles/map', 'Admin\\TelemetryController@liveMap', [$auth]);
+$router->get('/api/telemetry/latest', 'Api\\TelemetryController@latest');
+$router->get('/api/telemetry/history/{id}', 'Api\\TelemetryController@history');
+$router->post('/api/telemetry/ingest', 'Api\\TelemetryController@ingest');
 
-// Vehicles - live tracking JSON
-$router->get('/admin/vehicles/live',                'Admin\\VehicleAdminController@live',          [$auth]);
-$router->get('/admin/vehicles/{id}/live',           'Admin\\VehicleAdminController@liveOne',       [$auth]);
-$router->get('/admin/vehicles/{id}/breadcrumbs',    'Admin\\VehicleAdminController@breadcrumbs',   [$auth]);
-$router->get('/admin/vehicles/map',                 'Admin\\VehicleAdminController@map',            [$auth]);
 
+/*
+|--------------------------------------------------------------------------
+| ADMIN: VEHICLES (STATIC FIRST, DYNAMIC LAST)
+|--------------------------------------------------------------------------
+*/
 $router->get('/admin/vehicles',                     'Admin\\VehicleAdminController@index', [$auth]);
-$router->get('/admin/vehicles/{id}',                'Admin\\VehicleAdminController@profile', [$auth]);
-$router->get('/admin/vehicles/view/{id}',           'Admin\\VehicleAdminController@profile', [$auth]);
 $router->get('/admin/vehicles/create',              'Admin\\VehicleAdminController@create', [$auth]);
 $router->post('/admin/vehicles/create',             'Admin\\VehicleAdminController@store',  [$auth]);
 $router->get('/admin/vehicles/edit/{id}',           'Admin\\VehicleAdminController@edit',   [$auth]);
 $router->post('/admin/vehicles/edit/{id}',          'Admin\\VehicleAdminController@update', [$auth]);
 $router->get('/admin/vehicles/delete/{id}',         'Admin\\VehicleAdminController@confirmDelete', [$auth]);
 $router->post('/admin/vehicles/delete/{id}',        'Admin\\VehicleAdminController@delete',        [$auth]);
-$router->get('/admin/vehicles/map',                 'Admin\\VehicleAdminController@map',           [$auth]);
-$router->post('/admin/vehicles/{id}/gps',           'Admin\\VehicleAdminController@updateGps',     [$auth]);
-$router->post('/admin/vehicles/{id}/gps',           'Admin\\VehicleAdminController@saveGps',       [$auth]);
-
-
-// Assign driver to vehicle
 $router->post('/admin/vehicles/{id}/assign-driver', 'Admin\\VehicleAdminController@assignDriver', [$auth]);
+
+// DYNAMIC ROUTES LAST (or they will steal /map)
+$router->get('/admin/vehicles/view/{id}',       'Admin\\VehicleAdminController@profile', [$auth]);
+$router->get('/admin/vehicles/{id}',            'Admin\\VehicleAdminController@profile', [$auth]);
 
 
 /*
 |--------------------------------------------------------------------------
-| ADMIN: VEHICLE MAINTENANCE
+| GPS MANUAL UPDATE
 |--------------------------------------------------------------------------
 */
-$router->get('/admin/vehicles/{id}/maintenance',                      'Admin\\VehicleMaintenanceController@index',    [$auth]);
-$router->get('/admin/vehicles/{id}/maintenance/create',               'Admin\\VehicleMaintenanceController@create',   [$auth]);
-$router->post('/admin/vehicles/{id}/maintenance/create',              'Admin\\VehicleMaintenanceController@store',    [$auth]);
-$router->post('/admin/vehicles/{vehicleId}/maintenance/{id}/complete','Admin\\VehicleMaintenanceController@complete', [$auth]);
-$router->post('/admin/vehicles/{vehicleId}/maintenance/{id}/delete',  'Admin\\VehicleMaintenanceController@delete',   [$auth]);
+$router->post('/admin/vehicles/{id}/gps-update', 'Admin\\GpsController@update', [$auth]);
+$router->get('/admin/vehicles/{id}/gps-history', 'Admin\\GpsController@history', [$auth]);
 
 /*
 |--------------------------------------------------------------------------

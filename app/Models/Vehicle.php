@@ -23,7 +23,7 @@ class Vehicle
     /**
      * Find a single vehicle by ID
      */
-    public static function find(int $id): ?array
+    public static function find(string|int $id): ?array
     {
         $pdo = Database::pdo();
         $stmt = $pdo->prepare("SELECT * FROM vehicles WHERE id = ?");
@@ -47,7 +47,7 @@ class Vehicle
     /**
      * Assign a vehicle to a driver
      */
-    public static function assignToDriver(int $vehicleId, int $driverId): bool
+    public static function assignToDriver(string|int $vehicleId, string|int $driverId): bool
     {
         $pdo = Database::pdo();
 
@@ -71,7 +71,7 @@ class Vehicle
     /**
      * Unassign a vehicle from all drivers
      */
-    public static function unassign(int $vehicleId): bool
+    public static function unassign(string|int $vehicleId): bool
     {
         $pdo = Database::pdo();
         $stmt = $pdo->prepare("
@@ -112,7 +112,7 @@ class Vehicle
     /**
      * Update vehicle (optional future CRUD)
      */
-    public static function update(int $id, array $data): bool
+    public static function update(string|int $id, array $data): bool
     {
         $pdo = Database::pdo();
 
@@ -147,7 +147,7 @@ class Vehicle
     /**
      * Delete a vehicle (optional future CRUD)
      */
-    public static function delete(int $id): bool
+    public static function delete(string|int $id): bool
     {
         $pdo = Database::pdo();
         $stmt = $pdo->prepare("DELETE FROM vehicles WHERE id = ?");
