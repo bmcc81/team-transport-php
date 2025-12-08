@@ -33,6 +33,7 @@ use App\Core\Router;
 use App\Database\Database;
 use App\Middleware\AuthMiddleware;
 use App\Controllers\Api\TelemetryController;
+use App\Controllers\Admin\GeofenceController;
 
 
 Database::init([
@@ -142,6 +143,24 @@ $router->get('/admin/vehicles/{id}',            'Admin\\VehicleAdminController@p
 */
 $router->post('/admin/vehicles/{id}/gps-update', 'Admin\\GpsController@update', [$auth]);
 $router->get('/admin/vehicles/{id}/gps-history', 'Admin\\GpsController@history', [$auth]);
+
+// Geofences CRUD
+$router->get('/admin/geofences', 'Admin\\GeofenceController@index', [$auth]);
+$router->get('/admin/geofences/create', 'Admin\\GeofenceController@create', [$auth]);
+$router->post('/admin/geofences/store', 'Admin\\GeofenceController@store', [$auth]);
+
+// Edit (ID IN URL)
+$router->get('/admin/geofences/edit/{id}', 'Admin\\GeofenceController@edit', [$auth]);
+
+// Update POST
+$router->post('/admin/geofences/update/{id}', 'Admin\\GeofenceController@update', [$auth]);
+
+// Delete (POST)
+$router->post('/admin/geofences/delete/{id}', 'Admin\\GeofenceController@delete', [$auth]);
+
+// Alerts history
+$router->get('/admin/geofences/alerts', 'Admin\\GeofenceController@alerts', [$auth]);
+
 
 /*
 |--------------------------------------------------------------------------
