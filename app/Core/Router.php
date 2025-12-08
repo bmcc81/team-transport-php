@@ -59,15 +59,21 @@ class Router
                 [$controllerName, $methodName] = explode('@', $route['handler']);
                 $controllerClass = 'App\\Controllers\\' . $controllerName;
 
-                // Admin protection
-                if (str_starts_with($controllerName, 'Admin\\')) {
-                    // session_start();
-                    if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+                // Admin controller protection
+               if (str_starts_with($controllerClass, 'App\\Controllers\\Admin\\')) {
+                    if (empty($_SESSION['role']) || strtolower($_SESSION['role']) !== 'admin') {
                         http_response_code(403);
-                        include __DIR__ . '/../../views/errors/403.php';
+
+                        $error403 = __DIR__ . '/../../views/errors/403.php';
+                        if (file_exists($error403)) {
+                            include $error403;
+                        } else {
+                            echo "403 Forbidden – Admin Access Only";
+                        }
                         return;
                     }
                 }
+
 
                 if (!class_exists($controllerClass)) {
                     http_response_code(500);

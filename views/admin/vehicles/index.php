@@ -1,5 +1,6 @@
 <?php
 $pageTitle = "Vehicles";
+var_dump($_SESSION);
 require __DIR__ . '/../../layout/header.php';
 
 use App\Models\VehicleMaintenance;
@@ -111,6 +112,9 @@ foreach ($drivers as $d) {
                                     <a href="/admin/vehicles/view/<?= $v['id'] ?>" 
                                        class="btn btn-outline-primary btn-sm" title="View">
                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="/admin/vehicles/map?focus=<?= $v['id'] ?>" title="View Vehicule on Map" class="btn btn-outline-info btn-sm">
+                                        <i class="bi bi-geo-alt"></i>
                                     </a>
                                 </td>
                             </tr>

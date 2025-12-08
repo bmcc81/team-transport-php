@@ -10,7 +10,7 @@ require __DIR__ . '/../../layout/header.php';
             <?php require __DIR__ . '/../layout/sidebar.php'; ?>
         </div>
 
-        <main class="col-md-9 col-lg-10">
+        <main class="col-md-9 col-lg-9">
 
             <h2 class="h4 mb-3">
                 Edit Vehicle: <?= htmlspecialchars($vehicle['vehicle_number'] ?? '') ?>

@@ -40,11 +40,25 @@ function is_active_admin(string $prefix, string $uri): string {
             </a>
         </li>
         <li class="nav-item mb-1">
-            <a class="nav-link d-flex align-items-center <?= is_active_admin('/admin/vehicles', $currentUri) ?>"
-               href="/admin/vehicles">
+            <a class="nav-link d-flex align-items-center 
+                <?= (
+                    // highlight on /admin/vehicles or /admin/vehicles/*
+                    str_starts_with($currentUri, '/admin/vehicles')
+                    // but NOT on /admin/vehicles/map
+                    && !str_starts_with($currentUri, '/admin/vehicles/map')
+                ) ? 'active' : '' ?>"
+                href="/admin/vehicles">
                 <i class="bi bi-truck me-2"></i> Vehicles
             </a>
         </li>
+        <li class="nav-item mb-1">
+            <a class="nav-link d-flex align-items-center <?= str_starts_with($currentUri, '/admin/vehicles/map') ? 'active' : '' ?>"
+                href="/admin/vehicles/map">
+                <i class="bi bi-map me-2"></i> Live Map
+            </a>
+        </li>
+
+
         <li class="nav-item mb-1">
             <a class="nav-link d-flex align-items-center <?= is_active_admin('/admin/loads', $currentUri) ?>"
                href="/admin/loads">
