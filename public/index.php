@@ -32,7 +32,7 @@ if (file_exists($envFile)) {
 use App\Core\Router;
 use App\Database\Database;
 use App\Middleware\AuthMiddleware;
-use App\Controllers\Admin\TelemetryController;
+use App\Controllers\Api\TelemetryController;
 
 
 Database::init([
@@ -110,7 +110,7 @@ $router->post('/admin/drivers/assign-vehicle/{id}','Admin\\DriverAdminController
 | TELEMETRY (REAL-TIME MAP MUST BE FIRST)
 |--------------------------------------------------------------------------
 */
-$router->get('/admin/vehicles/map', 'Admin\\TelemetryController@liveMap', [$auth]);
+$router->get('/admin/vehicles/map', 'Api\\TelemetryController@liveMap', [$auth]);
 $router->get('/api/telemetry/latest', 'Api\\TelemetryController@latest');
 $router->get('/api/telemetry/history/{id}', 'Api\\TelemetryController@history');
 $router->post('/api/telemetry/ingest', 'Api\\TelemetryController@ingest');

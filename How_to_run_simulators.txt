@@ -1,0 +1,78 @@
+1) Run the WebSocket + ingest server:
+python telemetry_ws_server.py
+
+2) Run the fleet simulator:
+python sim_multi.py
+
+3) Open the Live Map UI
+
+Vehicles will appear + trails + clustering in real time.
+
+
+✅ Telemetry WebSocket server
+✅ HTTP ingest service
+✅ Multi-vehicle simulator
+✅ Everything needed for real-time map UI integration
+
+✅ requirements.txt
+
+Copy this into requirements.txt at the root of your project:
+
+aiohttp==3.9.5
+websockets==12.0
+requests==2.31.0
+certifi==2024.2.2
+urllib3==2.2.1
+idna==3.6
+charset-normalizer==3.3.2
+
+
+These cover:
+
+Package	Purpose
+aiohttp	Runs fast async HTTP ingest server (/ingest)
+websockets	Sends real-time vehicle updates to browser
+requests	Used by your Python GPS simulator (sim_multi.py)
+certifi / urllib3 / idna / charset-normalizer	Required dependencies for requests
+✅ Install everything
+
+Navigate to your project folder:
+
+cd C:\xampp\htdocs\TeamTransport
+pip install -r requirements.txt
+
+
+If using Python 3.13 explicitly:
+
+"C:\Users\brand\AppData\Local\Programs\Python\Python313\python.exe" -m pip install -r requirements.txt
+
+🚀 After installation — run your telemetry stack
+1️⃣ Start Telemetry WebSocket + ingest server
+python telemetry_ws_server.py
+
+2️⃣ Start multi-vehicle simulator
+python sim_multi.py
+
+3️⃣ Open your Live Map UI
+
+https://teamtransport.local/admin/vehicles/map
+
+You will now see:
+
+✔ Real-time markers
+✔ Trails
+✔ Speed-colored icons
+✔ Vehicle list updates
+✔ WebSocket green light indicator
+
+
+TO DO ====>
+
+If you want, I can also generate:
+
+✅ A Windows service to run telemetry_ws_server.py automatically
+✅ A Linux systemd service for your Raspberry Pi
+✅ A PowerShell launcher
+✅ A PM2 config (if you want forever-running processes)
+
+Just tell me: “Generate telemetry server service”
