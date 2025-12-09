@@ -57,8 +57,12 @@ function is_active_admin(string $prefix, string $uri): string {
                 <i class="bi bi-map me-2"></i> Live Map
             </a>
         </li>
-
-
+        <li class="nav-item mb-1">
+            <a class="nav-link d-flex align-items-center <?= str_starts_with($currentUri, '/admin/geofences') ? 'active' : '' ?>"
+            href="/admin/geofences">
+                <i class="bi bi-geo me-2"></i> Geofences
+            </a>
+        </li>
         <li class="nav-item mb-1">
             <a class="nav-link d-flex align-items-center <?= is_active_admin('/admin/loads', $currentUri) ?>"
                href="/admin/loads">
