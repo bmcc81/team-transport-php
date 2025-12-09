@@ -6,17 +6,12 @@
  *  - Clusters
  *  - Trails
  *  - Heatmap
- *  - Geofences (circle + polygon)
+ *  - Geofences (circle + polygon) from DB
  *  - Geofence enter/exit alerts
  *  - Active vehicles table
  *  - Playback (last 2 minutes)
  *  - Vehicle detail modal + follow + CSV export
- *
- * Requires:
- *  - Leaflet + markercluster + heatmap scripts loaded before this file
- *  - DOM elements from views/admin/vehicles/map.php
- *  - window.GEOFENCES (array) provided by PHP (can be empty)
- *  - optional: window.INITIAL_CENTER = [lat, lng]
+ *  - Geofence drawing tools + modal save
  */
 
 // -----------------------------
@@ -104,7 +99,7 @@ if (filterMinSpeed) {
     .forEach(el => el.addEventListener("change", applyFilters));
 
 function applyFilters() {
-    const minSpeed   = filterMinSpeed ? parseInt(filterMinSpeed.value, 10) : 0;
+    const minSpeed    = filterMinSpeed ? parseInt(filterMinSpeed.value, 10) : 0;
     const showStopped = filterShowStopped ? filterShowStopped.checked : true;
     const showHeatmap = filterShowHeatmap ? filterShowHeatmap.checked : true;
     const showTrails  = filterShowTrails ? filterShowTrails.checked : true;
@@ -205,7 +200,7 @@ function logGeofenceAlert(msg) {
 }
 
 // -----------------------------
-// GEOFENCES (from database)
+// GEOFENCES FROM DATABASE
 // -----------------------------
 const geoLayers = {};   // geofence_id → layer info
 const geoInside = {};   // vehicle_id → { geofence_id: true/false }
@@ -311,6 +306,151 @@ function checkGeofences(vehicleId, latlng) {
 }
 
 // -----------------------------
+// GEOFENCE DRAWING TOOLS
+// -----------------------------
+let drawnItems = new L.FeatureGroup();
+map.addLayer(drawnItems);
+
+const btnDrawCircle  = document.getElementById("btn-draw-circle");
+const btnDrawPolygon = document.getElementById("btn-draw-polygon");
+
+// Only configure draw tools if Leaflet.draw is loaded
+let drawControl = null;
+if (typeof L.Draw !== "undefined") {
+    drawControl = {
+        circle: new L.Draw.Circle(map, {
+            showRadius: true,
+            shapeOptions: {
+                color: "#ff6600",
+                weight: 2
+            }
+        }),
+        polygon: new L.Draw.Polygon(map, {
+            allowIntersection: false,
+            showArea: true,
+            shapeOptions: {
+                color: "#0066ff",
+                weight: 2
+            }
+        })
+    };
+}
+
+if (btnDrawCircle && drawControl && drawControl.circle) {
+    btnDrawCircle.addEventListener("click", () => {
+        drawControl.circle.enable();
+    });
+}
+
+if (btnDrawPolygon && drawControl && drawControl.polygon) {
+    btnDrawPolygon.addEventListener("click", () => {
+        drawControl.polygon.enable();
+    });
+}
+
+map.on(L.Draw.Event.CREATED, function (e) {
+    const layer = e.layer;
+    drawnItems.addLayer(layer);
+
+    if (e.layerType === "circle") {
+        const center = layer.getLatLng();
+        const radius = layer.getRadius();
+
+        openGeofenceCreateModal({
+            type: "circle",
+            center_lat: center.lat,
+            center_lng: center.lng,
+            radius_m: radius
+        });
+    }
+
+    if (e.layerType === "polygon") {
+        const latlngs = layer.getLatLngs()[0].map(p => [p.lat, p.lng]);
+
+        openGeofenceCreateModal({
+            type: "polygon",
+            polygon_points: latlngs
+        });
+    }
+});
+
+// -----------------------------
+// GEOFENCE CREATE MODAL + AJAX
+// -----------------------------
+function openGeofenceCreateModal(data) {
+    const modalEl = document.getElementById("geofenceCreateModal");
+    if (!modalEl) return;
+
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+    const typeInput  = document.getElementById("geo-type");
+    const latInput   = document.getElementById("geo-center-lat");
+    const lngInput   = document.getElementById("geo-center-lng");
+    const radiusInput = document.getElementById("geo-radius");
+    const polyInput  = document.getElementById("geo-poly");
+
+    if (!typeInput || !latInput || !lngInput || !radiusInput || !polyInput) {
+        console.error("Geofence modal inputs not found");
+        return;
+    }
+
+    typeInput.value = data.type;
+
+    if (data.type === "circle") {
+        latInput.value   = data.center_lat;
+        lngInput.value   = data.center_lng;
+        radiusInput.value = Math.round(data.radius_m);
+        polyInput.value  = "";
+    }
+
+    if (data.type === "polygon") {
+        polyInput.value  = JSON.stringify(data.polygon_points);
+        latInput.value   = "";
+        lngInput.value   = "";
+        radiusInput.value = "";
+    }
+
+    modal.show();
+}
+
+const geofenceCreateForm = document.getElementById("geofence-create-form");
+if (geofenceCreateForm) {
+    geofenceCreateForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const form = e.target;
+        const payload = new FormData(form);
+
+        try {
+            const res = await fetch("/admin/geofences/store", {
+                method: "POST",
+                body: payload
+            });
+
+            if (res.ok) {
+                // Close modal
+                const modalEl = document.getElementById("geofenceCreateModal");
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getInstance(modalEl) ||
+                                  bootstrap.Modal.getOrCreateInstance(modalEl);
+                    modal.hide();
+                }
+
+                // Simple UX feedback
+                alert("Geofence created.");
+                // Reload to fetch new geofence + draw it
+                location.reload();
+            } else {
+                alert("Failed to save geofence.");
+            }
+        } catch (err) {
+            console.error("Error saving geofence", err);
+            alert("Error saving geofence.");
+        }
+    });
+}
+
+// -----------------------------
 // TELEMETRY HANDLER
 // -----------------------------
 let activeModalVehicleId = null;
@@ -378,7 +518,7 @@ function handleTelemetryUpdate(data) {
         poly.setStyle({ color: getSpeedColor(speed) });
     }
 
-    // heatmap point (use latest from each vehicle)
+    // heatmap points
     const heatPoints = [];
     Object.values(telemetryHistory).forEach(list => {
         const last = list[list.length - 1];
@@ -395,22 +535,22 @@ function handleTelemetryUpdate(data) {
     // geofences
     checkGeofences(id, L.latLng(latlng[0], latlng[1]));
 
-    // map follow
+    // follow
     if (followVehicleId === id) {
         map.panTo(latlng);
     }
 
-    // refresh modal if open for this vehicle
+    // refresh modal if open
     if (activeModalVehicleId === id) {
         renderVehicleModal(id);
     }
 
-    // reapply filters
+    // filters
     applyFilters();
 }
 
 // -----------------------------
-// VEHICLE MODAL (advanced)
+// VEHICLE MODAL
 // -----------------------------
 let miniMap = null;
 let miniTrail = null;
@@ -459,13 +599,10 @@ function renderVehicleModal(id) {
     modalStatsEl.innerHTML = "";
     modalPointsEl.innerHTML = "";
 
-    // current status
     const liSpeed = document.createElement("li");
     liSpeed.innerHTML = `<strong>Speed:</strong> ${last.speed} km/h`;
-
     const liPos = document.createElement("li");
     liPos.innerHTML = `<strong>Position:</strong> ${last.lat.toFixed(5)}, ${last.lng.toFixed(5)}`;
-
     const liTime = document.createElement("li");
     liTime.innerHTML = `<strong>Last ping (UTC):</strong> ${last.tsDate.toISOString().slice(11, 19)}`;
 
@@ -479,7 +616,6 @@ function renderVehicleModal(id) {
         modalStatusEl.appendChild(liHeading);
     }
 
-    // stats window (last N points)
     const STAT_POINTS = 30;
     const windowPoints = hist.slice(-STAT_POINTS);
     if (windowPoints.length) {
@@ -495,10 +631,8 @@ function renderVehicleModal(id) {
 
         const liAvg = document.createElement("li");
         liAvg.innerHTML = `<strong>Avg speed:</strong> ${(totalSpeed / windowPoints.length).toFixed(1)} km/h`;
-
         const liMax = document.createElement("li");
         liMax.innerHTML = `<strong>Max speed:</strong> ${maxSpeed.toFixed(0)} km/h`;
-
         const liDist = document.createElement("li");
         liDist.innerHTML = `<strong>Distance:</strong> ${totalDist.toFixed(2)} km`;
 
@@ -507,7 +641,6 @@ function renderVehicleModal(id) {
         modalStatsEl.appendChild(liDist);
     }
 
-    // last 10 points list
     const last10 = hist.slice(-10).reverse();
     last10.forEach(p => {
         const li = document.createElement("li");
@@ -516,7 +649,6 @@ function renderVehicleModal(id) {
         modalPointsEl.appendChild(li);
     });
 
-    // mini map
     const miniDiv = document.getElementById("modal-mini-map");
     if (!miniDiv) return;
 
@@ -530,12 +662,8 @@ function renderVehicleModal(id) {
         miniMap.setView([last.lat, last.lng], 15);
     }
 
-    if (miniTrail) {
-        miniMap.removeLayer(miniTrail);
-    }
-    if (miniMarker) {
-        miniMap.removeLayer(miniMarker);
-    }
+    if (miniTrail) miniMap.removeLayer(miniTrail);
+    if (miniMarker) miniMap.removeLayer(miniMarker);
 
     const miniPoints = hist.slice(-10).map(p => [p.lat, p.lng]);
     miniTrail = L.polyline(miniPoints, {
@@ -551,7 +679,6 @@ function renderVehicleModal(id) {
         fillOpacity: 0.9
     }).addTo(miniMap);
 
-    // follow button label
     if (modalFollowBtn) {
         if (followVehicleId === id) {
             modalFollowBtn.classList.remove("btn-outline-primary");
@@ -615,9 +742,9 @@ if (modalExportBtn) {
 // -----------------------------
 // PLAYBACK (last 2 minutes)
 // -----------------------------
-const btnPlayback       = document.getElementById("btn-playback");
-const playbackProgress  = document.getElementById("playback-progress");
-let playbackTimer       = null;
+const btnPlayback      = document.getElementById("btn-playback");
+const playbackProgress = document.getElementById("playback-progress");
+let playbackTimer      = null;
 
 if (btnPlayback && playbackSelect) {
     btnPlayback.addEventListener("click", () => {

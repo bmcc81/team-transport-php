@@ -153,7 +153,7 @@ $router->post('/admin/geofences/store', 'Admin\\GeofenceController@store', [$aut
 $router->get('/admin/geofences/edit/{id}', 'Admin\\GeofenceController@edit', [$auth]);
 
 // Update POST
-$router->post('/admin/geofences/update/{id}', 'Admin\\GeofenceController@update', [$auth]);
+$router->post('/admin/geofences/update', 'Admin\\GeofenceController@update', [$auth]);
 
 // Delete (POST)
 $router->post('/admin/geofences/delete/{id}', 'Admin\\GeofenceController@delete', [$auth]);

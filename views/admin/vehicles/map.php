@@ -1,6 +1,7 @@
 <?php
 $pageTitle = "Live Fleet Map";
 require __DIR__ . '/../../layout/header.php';
+require __DIR__ . '/../geofences/_create_modal.php';
 ?>
 
 <div class="container-fluid mt-3">
@@ -30,7 +31,17 @@ require __DIR__ . '/../../layout/header.php';
 
             <div class="row g-3">
                 <!-- MAP -->
-                <div class="col-12 col-xl-8">
+                <div class="col-12 col-xl-8 position-relative">
+                    <div id="geofence-tools" class="position-absolute top-0 end-0 m-3 p-2 bg-white shadow-sm rounded border" style="z-index: 500;">
+                        <div class="btn-group">
+                            <button id="btn-draw-circle" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-circle"></i> Circle
+                            </button>
+                            <button id="btn-draw-polygon" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-vector-pen"></i> Polygon
+                            </button>
+                        </div>
+                    </div>
                     <div id="live-map" class="border rounded shadow-sm" style="height: 640px;"></div>
                 </div>
 
@@ -214,6 +225,10 @@ require __DIR__ . '/../../layout/header.php';
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+<!-- Leaflet Draw -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
 <!-- Marker clustering -->
 <link
     rel="stylesheet"
@@ -228,7 +243,9 @@ require __DIR__ . '/../../layout/header.php';
 <!-- Heatmap -->
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script>
-    window.GEOFENCES = <?= json_encode($geofences, JSON_THROW_ON_ERROR) ?>;
+    window.GEOFENCES = <?= json_encode(
+    $geofences,
+    JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR) ?>;
     window.INITIAL_CENTER = [45.50, -73.57]; // optional
 </script>
 <script src="/assets/js/maps.js?v=1"></script>

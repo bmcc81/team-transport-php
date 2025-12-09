@@ -155,7 +155,7 @@ class VehicleAdminController extends Controller
         $vehicles = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         // Fetch ACTIVE geofences
-        $geofences = Geofence::active();
+        $geofences = Geofence::allActive();
 
         $this->view('admin/vehicles/map', compact('vehicles', 'geofences'));
     }

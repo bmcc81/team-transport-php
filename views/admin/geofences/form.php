@@ -30,7 +30,7 @@ require __DIR__ . '/../../layout/header.php';
                 <div class="col-lg-5">
                     <div class="card shadow-sm mb-3">
                         <div class="card-body">
-                            <form action="<?= $isEdit ? '/admin/geofences/update' : '/admin/geofences/store' ?>"
+                            <form action="/admin/geofences/update/<?= $geofence['id'] ?>" method="post">
                                   method="post">
                                 <?php if ($isEdit): ?>
                                     <input type="hidden" name="id" value="<?= (int)$geofence['id'] ?>">
