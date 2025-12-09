@@ -22,6 +22,8 @@ const initialCenter = (window.INITIAL_CENTER && Array.isArray(window.INITIAL_CEN
     : [45.50, -73.57];
 
 let map = L.map("live-map").setView(initialCenter, 14);
+let inlineEditor = null;
+
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 20
@@ -412,6 +414,60 @@ function openGeofenceCreateModal(data) {
 
     modal.show();
 }
+
+document.getElementById("btn-save-geofence").addEventListener("click", async () => {
+    const form = document.getElementById("geofence-create-form");
+    const payload = new FormData(form);
+
+    const res = await fetch("/admin/geofences/store", { method: "POST", body: payload });
+
+    if (!res.ok) {
+        alert("Failed to save geofence.");
+        return;
+    }
+
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById("geofenceCreateModal"));
+    modal.hide();
+
+    alert("Geofence saved.");
+
+    location.reload(); // reload map so new geofence is visible
+});
+
+// Setup map inside geofence modal
+document.getElementById("geofenceCreateModal").addEventListener("shown.bs.modal", () => {
+    // Initialize once
+    if (!inlineEditor) {
+        inlineEditor = GeofenceEditor.init({
+            mapId: "geofence-map-inline",
+            defaultCenter: [45.50, -73.57],
+            defaultZoom: 13,
+
+            typeSelect: document.getElementById("geo-type"),
+
+            circle: {
+                section: document.getElementById("circle-section"),
+                latInput: document.getElementById("geo-center-lat"),
+                lngInput: document.getElementById("geo-center-lng"),
+                radiusInput: document.getElementById("geo-radius")
+            },
+
+            polygon: {
+                section: document.getElementById("polygon-section"),
+                pointsInput: document.getElementById("geo-poly")
+            },
+
+            buttons: {
+                circle: document.getElementById("btn-inline-circle"),
+                polygon: document.getElementById("btn-inline-polygon"),
+                reset: document.getElementById("btn-inline-reset")
+            },
+
+            initialData: {} // always blank for create
+        });
+    }
+});
 
 const geofenceCreateForm = document.getElementById("geofence-create-form");
 if (geofenceCreateForm) {

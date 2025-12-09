@@ -45,3 +45,24 @@ body {
     z-index: 9999;
 }
 
+.map-flex-fill {
+    width: 100%;
+    min-height: 500px; /* fallback */
+    height: calc(100vh - 260px); /* auto-fit based on viewport */
+}
+
+/* On large screens (form is tall): fill remaining card height */
+@media (min-width: 992px) {
+    .map-flex-fill {
+        height: calc(100vh - 180px);
+    }
+}
+
+/* Extra large desktops */
+@media (min-width: 1400px) {
+    .map-flex-fill {
+        height: calc(100vh - 150px);
+    }
+}
+
+
