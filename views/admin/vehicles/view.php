@@ -1,18 +1,20 @@
 <?php
-$pageTitle = "Vehicle Details — " . htmlspecialchars($vehicle['vehicle_number']);
-require __DIR__ . '/../../layout/header.php';
 
 use App\Models\VehicleMaintenance;
 use App\Database\Database;
 
+// Page title (safe)
+$pageTitle = "Vehicle Details — " . e($vehicle['vehicle_number'] ?? '');
+
+// DB
 $pdo = Database::pdo();
 
 // Count overdue maintenance
 $overdue = VehicleMaintenance::countDueOrOverdueForVehicle((int)$vehicle['id']);
 
-// Fetch maintenance summary (next 5)
+// Fetch maintenance summary (next 5 by date)
 $maintenance = $pdo->prepare("
-    SELECT *
+    SELECT id, title, description, scheduled_date, completed_date, status
     FROM vehicle_maintenance
     WHERE vehicle_id = ?
     ORDER BY scheduled_date ASC
@@ -24,9 +26,46 @@ $maintenanceItems = $maintenance->fetchAll(PDO::FETCH_ASSOC);
 // Driver map
 $driverMap = [];
 $drivers = $pdo->query("SELECT id, full_name FROM users")->fetchAll(PDO::FETCH_ASSOC);
-foreach ($drivers as $d) $driverMap[$d['id']] = $d['full_name'];
-?>
+foreach ($drivers as $d) {
+    $driverMap[$d['id']] = $d['full_name'];
+}
 
+require __DIR__ . '/../../layout/header.php';
+
+// Helpers for UI badges / status
+$today = new DateTimeImmutable('today');
+
+$vehicleStatus = $vehicle['status'] ?? '';
+$vehicleStatusBadgeClass = 'bg-secondary';
+$vehicleStatusLabel = ucfirst($vehicleStatus ?: 'Unknown');
+
+switch ($vehicleStatus) {
+    case 'available':
+        $vehicleStatusBadgeClass = 'bg-success';
+        $vehicleStatusLabel = 'Available';
+        break;
+    case 'maintenance':
+        $vehicleStatusBadgeClass = 'bg-warning text-dark';
+        $vehicleStatusLabel = 'In Maintenance';
+        break;
+    case 'in_service':
+        $vehicleStatusBadgeClass = 'bg-primary';
+        $vehicleStatusLabel = 'In Service';
+        break;
+}
+
+// Year badge color (newer = greener)
+$yearValue = isset($vehicle['year']) ? (int)$vehicle['year'] : 0;
+$yearBadgeClass = 'bg-secondary';
+$currentYear = (int)$today->format('Y');
+
+if ($yearValue >= $currentYear - 3) {
+    $yearBadgeClass = 'bg-success';
+} elseif ($yearValue >= $currentYear - 7) {
+    $yearBadgeClass = 'bg-warning text-dark';
+}
+
+?>
 <div class="container-fluid mt-3">
     <div class="row">
 
@@ -37,28 +76,45 @@ foreach ($drivers as $d) $driverMap[$d['id']] = $d['full_name'];
 
         <main class="col-md-9 col-lg-10">
 
-            <!-- Breadcrumb -->
-            <nav aria-label="breadcrumb" class="mb-3">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="/admin">Admin</a></li>
-                    <li class="breadcrumb-item"><a href="/admin/vehicles">Vehicles</a></li>
-                    <li class="breadcrumb-item active"><?= htmlspecialchars($vehicle['vehicle_number']) ?></li>
-                </ol>
-            </nav>
-
             <!-- Title row -->
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2 class="h4 mb-0">
-                    <?= htmlspecialchars($vehicle['vehicle_number']) ?>
-                </h2>
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <div>
+                    <h2 class="h4 mb-1">
+                        <?= e($vehicle['vehicle_number'] ?? 'Vehicle') ?>
+                    </h2>
 
-                <div class="d-flex gap-2">
-                    <a href="/admin/vehicles/<?= $vehicle['id'] ?>/edit"
+                    <div class="d-flex flex-wrap align-items-center gap-2 small text-muted">
+                        <!-- Status badge -->
+                        <span class="badge <?= $vehicleStatusBadgeClass ?>">
+                            <i class="bi bi-truck-front me-1"></i>
+                            <?= e($vehicleStatusLabel) ?>
+                        </span>
+
+                        <!-- Year badge (if set) -->
+                        <?php if ($yearValue > 0): ?>
+                            <span class="badge <?= $yearBadgeClass ?>">
+                                <i class="bi bi-calendar3 me-1"></i>
+                                <?= e((string)$yearValue) ?>
+                            </span>
+                        <?php endif; ?>
+
+                        <!-- Plate quick badge -->
+                        <?php if (!empty($vehicle['license_plate'])): ?>
+                            <span class="badge text-bg-light border">
+                                <i class="bi bi-card-text me-1"></i>
+                                Plate: <?= e($vehicle['license_plate']) ?>
+                            </span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="/admin/vehicles/<?= e((string)$vehicle['id']) ?>/edit"
                        class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-pencil"></i> Edit
                     </a>
 
-                    <form action="/admin/vehicles/<?= $vehicle['id'] ?>/delete"
+                    <form action="/admin/vehicles/<?= e((string)$vehicle['id']) ?>/delete"
                           method="POST"
                           onsubmit="return confirm('Delete this vehicle?');">
                         <button class="btn btn-outline-danger btn-sm">
@@ -70,287 +126,202 @@ foreach ($drivers as $d) $driverMap[$d['id']] = $d['full_name'];
 
             <!-- MAINTENANCE ALERT -->
             <?php if ($overdue > 0): ?>
-                <div class="alert alert-warning d-flex justify-content-between align-items-center shadow-sm">
-                    <div><strong><?= $overdue ?></strong> maintenance item(s) are overdue.</div>
-                    <a href="/admin/vehicles/<?= $vehicle['id'] ?>/maintenance"
-                       class="btn btn-outline-dark btn-sm">View Maintenance</a>
+                <div class="alert alert-warning d-flex justify-content-between align-items-center shadow-sm mb-4">
+                    <div>
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong><?= e((string)$overdue) ?></strong> maintenance item(s) are overdue.
+                    </div>
+                    <a href="/admin/vehicles/<?= e((string)$vehicle['id']) ?>/maintenance"
+                       class="btn btn-outline-dark btn-sm">
+                        View Maintenance
+                    </a>
                 </div>
             <?php endif; ?>
 
-            <!-- Vehicle card -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-light fw-semibold">Vehicle Information</div>
+            <!-- Main content layout -->
+            <div class="row g-3">
 
-                <div class="card-body">
-                    <div class="row g-3">
-
-                        <div class="col-md-6">
-                            <label class="fw-bold">Vehicle Number</label>
-                            <div><?= htmlspecialchars($vehicle['vehicle_number']) ?></div>
+                <!-- Vehicle card -->
+                <div class="col-12 col-xl-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light fw-semibold">
+                            Vehicle Information
                         </div>
 
-                        <div class="col-md-6">
-                            <label class="fw-bold">Make & Model</label>
-                            <div><?= htmlspecialchars($vehicle['make'] . ' ' . $vehicle['model']) ?></div>
-                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
 
-                        <div class="col-md-4">
-                            <label class="fw-bold">Year</label>
-                            <div><?= htmlspecialchars($vehicle['year']) ?></div>
-                        </div>
+                                <div class="col-md-6">
+                                    <label class="fw-bold small text-muted d-block">Vehicle Number</label>
+                                    <div><?= e($vehicle['vehicle_number'] ?? '') ?></div>
+                                </div>
 
-                        <div class="col-md-4">
-                            <label class="fw-bold">License Plate</label>
-                            <div><?= htmlspecialchars($vehicle['license_plate']) ?></div>
-                        </div>
+                                <div class="col-md-6">
+                                    <label class="fw-bold small text-muted d-block">Make &amp; Model</label>
+                                    <div>
+                                        <?= e(($vehicle['make'] ?? '') . ' ' . ($vehicle['model'] ?? '')) ?>
+                                    </div>
+                                </div>
 
-                        <div class="col-md-4">
-                            <label class="fw-bold">VIN</label>
-                            <div><?= htmlspecialchars($vehicle['vin'] ?? '—') ?></div>
-                        </div>
+                                <div class="col-md-4">
+                                    <label class="fw-bold small text-muted d-block">Year</label>
+                                    <div>
+                                        <?php if ($yearValue > 0): ?>
+                                            <span class="badge <?= $yearBadgeClass ?>">
+                                                <?= e((string)$yearValue) ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="text-muted">Not set</span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
 
-                        <div class="col-md-4">
-                            <label class="fw-bold">Status</label>
-                            <div>
-                                <?php if ($vehicle['status'] === 'available'): ?>
-                                    <span class="badge bg-success">Available</span>
-                                <?php elseif ($vehicle['status'] === 'maintenance'): ?>
-                                    <span class="badge bg-warning">Maintenance</span>
-                                <?php elseif ($vehicle['status'] === 'in_service'): ?>
-                                    <span class="badge bg-primary">In Service</span>
-                                <?php else: ?>
-                                    <?= htmlspecialchars($vehicle['status']) ?>
-                                <?php endif; ?>
+                                <div class="col-md-4">
+                                    <label class="fw-bold small text-muted d-block">License Plate</label>
+                                    <div><?= e($vehicle['license_plate'] ?? '') ?></div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="fw-bold small text-muted d-block">VIN</label>
+                                    <div><?= e($vehicle['vin'] ?? '—') ?></div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="fw-bold small text-muted d-block">Status</label>
+                                    <div>
+                                        <span class="badge <?= $vehicleStatusBadgeClass ?>">
+                                            <?= e($vehicleStatusLabel) ?>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-8">
+                                    <label class="fw-bold small text-muted d-block">Assigned Driver</label>
+                                    <div>
+                                        <?php if (!empty($vehicle['assigned_driver_id'])): ?>
+                                            <?php
+                                            $driverId = $vehicle['assigned_driver_id'];
+                                            $driverLabel = $driverMap[$driverId] ?? ('Driver #' . $driverId);
+                                            ?>
+                                            <i class="bi bi-person-badge me-1"></i>
+                                            <?= e($driverLabel) ?>
+                                        <?php else: ?>
+                                            <span class="text-muted">None assigned</span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
-
-                        <div class="col-md-4">
-                            <label class="fw-bold">Assigned Driver</label>
-                            <div>
-                                <?php if ($vehicle['assigned_driver_id']): ?>
-                                    <?= htmlspecialchars($driverMap[$vehicle['assigned_driver_id']] ?? 'Driver #' . $vehicle['assigned_driver_id']) ?>
-                                <?php else: ?>
-                                    <span class="text-muted">None</span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-
                     </div>
                 </div>
-            </div>
 
-            <!-- Maintenance summary -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                    <span class="fw-semibold">Maintenance</span>
-                    <a href="/admin/vehicles/<?= $vehicle['id'] ?>/maintenance/create"
-                       class="btn btn-primary btn-sm">
-                        <i class="bi bi-plus-lg"></i> Add Maintenance
-                    </a>
+                <!-- Maintenance card -->
+                <div class="col-12 col-xl-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center bg-light fw-semibold">
+                            <span>
+                                <i class="bi bi-wrench-adjustable-circle me-2"></i>
+                                Maintenance Overview
+                            </span>
+                            <a href="/admin/vehicles/<?= e((string)$vehicle['id']) ?>/maintenance"
+                               class="btn btn-sm btn-outline-primary">
+                                View All
+                            </a>
+                        </div>
+
+                        <div class="card-body">
+                            <?php if (empty($maintenanceItems)): ?>
+                                <p class="text-muted mb-0">
+                                    No upcoming or recent maintenance items for this vehicle.
+                                </p>
+                            <?php else: ?>
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th scope="col">Status</th>
+                                                <th scope="col">Title</th>
+                                                <th scope="col">Scheduled</th>
+                                                <th scope="col">Completed</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        <?php foreach ($maintenanceItems as $item): ?>
+                                            <?php
+                                            $status = $item['status'] ?? 'planned';
+                                            $scheduledDate = !empty($item['scheduled_date'])
+                                                ? new DateTimeImmutable($item['scheduled_date'])
+                                                : null;
+                                            $completedDate = !empty($item['completed_date'])
+                                                ? new DateTimeImmutable($item['completed_date'])
+                                                : null;
+
+                                            $statusBadgeClass = 'bg-secondary';
+                                            $statusIcon = 'bi-clock-history';
+                                            $statusLabel = ucfirst($status);
+
+                                            $isCompleted = ($status === 'completed');
+                                            $isOverdue = false;
+
+                                            if (!$isCompleted && $scheduledDate instanceof DateTimeImmutable) {
+                                                $isOverdue = $scheduledDate < $today;
+                                            }
+
+                                            if ($isCompleted) {
+                                                $statusBadgeClass = 'bg-success';
+                                                $statusIcon = 'bi-check-circle-fill';
+                                                $statusLabel = 'Completed';
+                                            } elseif ($isOverdue) {
+                                                $statusBadgeClass = 'bg-danger';
+                                                $statusIcon = 'bi-exclamation-octagon-fill';
+                                                $statusLabel = 'Overdue';
+                                            } else {
+                                                // planned / upcoming
+                                                $statusBadgeClass = 'bg-info text-dark';
+                                                $statusIcon = 'bi-calendar-event';
+                                                $statusLabel = 'Planned';
+                                            }
+
+                                            $scheduledLabel = $scheduledDate
+                                                ? $scheduledDate->format('Y-m-d')
+                                                : '—';
+
+                                            $completedLabel = $completedDate
+                                                ? $completedDate->format('Y-m-d')
+                                                : '—';
+                                            ?>
+                                            <tr>
+                                                <td>
+                                                    <span class="badge <?= $statusBadgeClass ?>">
+                                                        <i class="bi <?= $statusIcon ?> me-1"></i>
+                                                        <?= e($statusLabel) ?>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="fw-semibold">
+                                                        <?= e($item['title'] ?? '') ?>
+                                                    </div>
+                                                    <?php if (!empty($item['description'])): ?>
+                                                        <div class="small text-muted text-truncate" style="max-width: 260px;">
+                                                            <?= e($item['description']) ?>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td><?= e($scheduledLabel) ?></td>
+                                                <td><?= e($completedLabel) ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="card-body">
-
-                    <?php if (empty($maintenanceItems)): ?>
-                        <div class="text-muted text-center py-3">
-                            No maintenance records.
-                            <br>
-                            <a href="/admin/vehicles/<?= $vehicle['id'] ?>/maintenance/create"
-                               class="btn btn-outline-primary btn-sm mt-2">Add First Maintenance</a>
-                        </div>
-                    <?php else: ?>
-
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover mb-0">
-                                <thead class="table-light">
-                                <tr>
-                                    <th>Title</th>
-                                    <th>Scheduled</th>
-                                    <th>Status</th>
-                                    <th></th>
-                                </tr>
-                                </thead>
-                                <tbody>
-
-                                <?php foreach ($maintenanceItems as $m): ?>
-                                    <?php $isOverdue = $m['status'] === 'planned' && $m['scheduled_date'] < date('Y-m-d'); ?>
-
-                                    <tr class="<?= $isOverdue ? 'table-warning' : '' ?>">
-                                        <td><?= htmlspecialchars($m['title']) ?></td>
-                                        <td><?= htmlspecialchars($m['scheduled_date']) ?></td>
-                                        <td>
-                                            <?php if ($m['status'] === 'completed'): ?>
-                                                <span class="badge bg-success">Completed</span>
-                                            <?php elseif ($isOverdue): ?>
-                                                <span class="badge bg-danger">Overdue</span>
-                                            <?php else: ?>
-                                                <span class="badge bg-info">Planned</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td class="text-end">
-                                            <a href="/admin/vehicles/<?= $vehicle['id'] ?>/maintenance"
-                                               class="btn btn-outline-secondary btn-sm">
-                                                <i class="bi bi-arrow-right"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-
-                                <?php endforeach; ?>
-
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="mt-3">
-                            <a href="/admin/vehicles/<?= $vehicle['id'] ?>/maintenance"
-                               class="btn btn-outline-primary btn-sm">View All Maintenance</a>
-                        </div>
-
-                    <?php endif; ?>
-
-                </div>
-            </div>
-
-            <!-- GPS + MAP -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-light fw-semibold d-flex justify-content-between align-items-center">
-                    GPS Coordinates
-                    <button id="btnUseMyLocation" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-geo"></i> Use My Location
-                    </button>
-                </div>
-
-                <div class="card-body">
-
-                    <form class="row g-3">
-
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Latitude</label>
-                            <input type="text"
-                                name="latitude"
-                                class="form-control"
-                                value="<?= htmlspecialchars($vehicle['latitude'] ?? '') ?>">
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Longitude</label>
-                            <input type="text"
-                                name="longitude"
-                                class="form-control"
-                                value="<?= htmlspecialchars($vehicle['longitude'] ?? '') ?>">
-                        </div>
-
-                        <div class="col-12">
-                            <button id="gps-save-btn" class="btn btn-primary">
-                                <i class="bi bi-save"></i> Save GPS
-                            </button>
-                        </div>
-
-                    </form>
-
-                    <!-- LIVE MAP -->
-                    <div id="vehicleMap" style="height: 650px;" class="mt-3 rounded border"></div>
-
-                </div>
-            </div>
+            </div> <!-- /.row g-3 -->
 
         </main>
-
-    </div>
-</div>
-
-
-<!-- Leaflet -->
-<link rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-
-<!-- Unified Map + GPS Auto-Save -->
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-
-    const latInput = document.querySelector("input[name='latitude']");
-    const lonInput = document.querySelector("input[name='longitude']");
-    const saveButton = document.querySelector("#gps-save-btn");
-    const useMyLocationBtn = document.getElementById("btnUseMyLocation");
-
-    let lat = parseFloat(latInput.value || 45.5019);
-    let lon = parseFloat(lonInput.value || -73.5674);
-    let autoSaveTimer = null;
-
-    // Map init
-    const map = L.map("vehicleMap").setView([lat, lon], 12);
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19
-    }).addTo(map);
-
-    // Draggable marker
-    let marker = L.marker([lat, lon], { draggable: true }).addTo(map);
-
-    marker.on("dragend", function () {
-        const pos = marker.getLatLng();
-        latInput.value = pos.lat.toFixed(6);
-        lonInput.value = pos.lng.toFixed(6);
-        startAutoSave();
-    });
-
-    // Manual save
-    saveButton.addEventListener("click", (e) => {
-        e.preventDefault();
-        saveGPS();
-    });
-
-    // Auto-save
-    function startAutoSave() {
-        clearTimeout(autoSaveTimer);
-        autoSaveTimer = setTimeout(saveGPS, 800);
-    }
-
-    function saveGPS() {
-        const formData = new FormData();
-        formData.append("latitude", latInput.value);
-        formData.append("longitude", lonInput.value);
-
-        fetch(window.location.pathname.replace('/view/', '/') + '/gps', {
-            method: "POST",
-            body: formData
-        }).then(() => console.log("GPS auto-saved"));
-    }
-
-    // Use My Location
-    useMyLocationBtn.addEventListener("click", () => {
-        if (!navigator.geolocation) {
-            alert("Geolocation not supported.");
-            return;
-        }
-
-        useMyLocationBtn.disabled = true;
-        useMyLocationBtn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Locating...`;
-
-        navigator.geolocation.getCurrentPosition(pos => {
-            const { latitude, longitude } = pos.coords;
-
-            latInput.value = latitude.toFixed(6);
-            lonInput.value = longitude.toFixed(6);
-
-            marker.setLatLng([latitude, longitude]);
-            map.setView([latitude, longitude], 14);
-
-            saveGPS();
-
-            useMyLocationBtn.innerHTML = "Use My Location";
-            useMyLocationBtn.disabled = false;
-
-        }, err => {
-            alert("Unable to access location: " + err.message);
-            useMyLocationBtn.innerHTML = "Use My Location";
-            useMyLocationBtn.disabled = false;
-        });
-    });
-
-});
-</script>
-
-<?php require __DIR__ . '/../../layout/footer.php'; ?>
+    </div> <!-- /.row -->
+</div> <!-- /.container-fluid -->

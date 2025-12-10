@@ -28,6 +28,7 @@ $breadcrumbs = Breadcrumbs::generate($currentUri);
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/assets/css/app.css">
+    <link rel="stylesheet" href="/assets/css/geofence-editor.css">
 </head>
 
 <body class="bg-light d-flex flex-column min-vh-100">

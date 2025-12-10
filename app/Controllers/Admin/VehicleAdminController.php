@@ -159,4 +159,102 @@ class VehicleAdminController extends Controller
 
         $this->view('admin/vehicles/map', compact('vehicles', 'geofences'));
     }
+
+    public function maintenanceCreate(int $id): void
+{
+    $pdo = Database::pdo();
+
+    // Fetch the vehicle
+    $stmt = $pdo->prepare("SELECT * FROM vehicles WHERE id = ?");
+    $stmt->execute([$id]);
+    $vehicle = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$vehicle) {
+        http_response_code(404);
+        echo "Vehicle not found.";
+        return;
+    }
+
+    // Empty default values for the form
+    $item = [
+        'title'          => '',
+        'description'    => '',
+        'scheduled_date' => '',
+        'status'         => 'planned',
+    ];
+
+    $errors = [];
+
+    $this->view('admin/vehicles/maintenance_create', compact('vehicle', 'item', 'errors'));
+}
+
+public function maintenanceStore(int $id): void
+    {
+        $pdo = Database::pdo();
+
+        // Validate vehicle exists
+        $stmt = $pdo->prepare("SELECT * FROM vehicles WHERE id = ?");
+        $stmt->execute([$id]);
+        $vehicle = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$vehicle) {
+            http_response_code(404);
+            echo "Vehicle not found.";
+            return;
+        }
+
+        // Collect POST data
+        $title          = trim($_POST['title'] ?? '');
+        $description    = trim($_POST['description'] ?? '');
+        $scheduledDate  = trim($_POST['scheduled_date'] ?? '');
+        $status         = trim($_POST['status'] ?? 'planned');
+
+        // Validation
+        $errors = [];
+
+        if ($title === '') {
+            $errors[] = "Title is required.";
+        }
+
+        if ($scheduledDate === '') {
+            $errors[] = "Scheduled date is required.";
+        } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $scheduledDate)) {
+            $errors[] = "Scheduled date must be YYYY-MM-DD.";
+        }
+
+        // If errors, re-render form
+        if (!empty($errors)) {
+            $item = [
+                'title'          => $title,
+                'description'    => $description,
+                'scheduled_date' => $scheduledDate,
+                'status'         => $status,
+            ];
+
+            $this->view('admin/vehicles/maintenance_create', compact('vehicle', 'item', 'errors'));
+            return;
+        }
+
+        // Insert into DB
+        $stmt = $pdo->prepare("
+            INSERT INTO vehicle_maintenance 
+                (vehicle_id, title, description, scheduled_date, status, created_by, created_at)
+            VALUES 
+                (?, ?, ?, ?, ?, ?, NOW())
+        ");
+
+        $stmt->execute([
+            $vehicle['id'],
+            $title,
+            $description,
+            $scheduledDate,
+            $status,
+            $_SESSION['user_id'] ?? 1, // fallback for safety
+        ]);
+
+        // Redirect to maintenance dashboard
+        header("Location: /admin/vehicles/{$vehicle['id']}/maintenance");
+        exit;
+    }
+
 }
