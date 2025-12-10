@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require __DIR__ . '/../app/bootstrap.php';
+
 session_start();
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -131,10 +133,20 @@ $router->get('/admin/vehicles/delete/{id}',         'Admin\\VehicleAdminControll
 $router->post('/admin/vehicles/delete/{id}',        'Admin\\VehicleAdminController@delete',        [$auth]);
 $router->post('/admin/vehicles/{id}/assign-driver', 'Admin\\VehicleAdminController@assignDriver', [$auth]);
 
+// ADD THIS BEFORE THE DYNAMIC ROUTES:
+$router->get('/admin/vehicles/{id}/maintenance', 'Admin\\VehicleAdminController@maintenance', [$auth]);
+
 // DYNAMIC ROUTES LAST (or they will steal /map)
 $router->get('/admin/vehicles/view/{id}',       'Admin\\VehicleAdminController@profile', [$auth]);
 $router->get('/admin/vehicles/{id}',            'Admin\\VehicleAdminController@profile', [$auth]);
 
+/*
+|--------------------------------------------------------------------------
+| ADMIN: VEHICLES Maintenance
+|--------------------------------------------------------------------------
+*/
+$router->get('/admin/vehicles/{id}/maintenance/create', 'Admin\\VehicleAdminController@maintenanceCreate', [$auth]);
+$router->post('/admin/vehicles/{id}/maintenance/create', 'Admin\\VehicleAdminController@maintenanceStore', [$auth]);
 
 /*
 |--------------------------------------------------------------------------
@@ -150,10 +162,12 @@ $router->get('/admin/geofences/create', 'Admin\\GeofenceController@create', [$au
 $router->post('/admin/geofences/store', 'Admin\\GeofenceController@store', [$auth]);
 
 // Edit (ID IN URL)
+$router->get('/admin/geofences/edit',      'Admin\\GeofenceController@edit', [$auth]);
 $router->get('/admin/geofences/edit/{id}', 'Admin\\GeofenceController@edit', [$auth]);
 
+
 // Update POST
-$router->post('/admin/geofences/update', 'Admin\\GeofenceController@update', [$auth]);
+$router->post('/admin/geofences/update/{id}', 'Admin\\GeofenceController@update', [$auth]);
 
 // Delete (POST)
 $router->post('/admin/geofences/delete/{id}', 'Admin\\GeofenceController@delete', [$auth]);

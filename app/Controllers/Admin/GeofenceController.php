@@ -4,89 +4,178 @@ namespace App\Controllers\Admin;
 
 use App\Core\Controller;
 use App\Database\Database;
-use App\Models\Geofence;
+use PDO;
 
 class GeofenceController extends Controller
 {
-    /**
-     * List all geofences.
-     */
     public function index(): void
     {
-        $geofences = Geofence::all();
-        $this->view('admin/geofences/index', compact('geofences'));
+        $pdo = Database::pdo();
+
+        // ------------------------------------------------------------
+        // Query Parameters
+        // ------------------------------------------------------------
+        $page      = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+        $pageSize  = isset($_GET['per_page']) ? max(10, intval($_GET['per_page'])) : 10;
+        $search    = $_GET['search'] ?? '';
+        $type      = $_GET['type'] ?? '';
+        $active    = $_GET['active'] ?? '';
+        
+        // Sorting allowed fields
+        $allowedSort = ['name', 'type', 'created_at'];
+        $sort   = $_GET['sort'] ?? 'created_at';
+        $order  = $_GET['order'] ?? 'DESC';
+
+        if (!in_array($sort, $allowedSort)) $sort = 'created_at';
+        if (!in_array(strtoupper($order), ['ASC', 'DESC'])) $order = 'DESC';
+
+        $offset = ($page - 1) * $pageSize;
+
+        // ------------------------------------------------------------
+        // Build WHERE conditions
+        // ------------------------------------------------------------
+        $where = [];
+        $params = [];
+
+        if ($search !== '') {
+            $where[] = "(g.name LIKE :search OR g.description LIKE :search)";
+            $params[':search'] = "%{$search}%";
+        }
+
+        if ($type === 'circle' || $type === 'polygon') {
+            $where[] = "g.type = :type";
+            $params[':type'] = $type;
+        }
+
+        if ($active !== '') {
+            $where[] = "g.active = :active";
+            $params[':active'] = intval($active);
+        }
+
+        $whereSql = $where ? ("WHERE " . implode(" AND ", $where)) : "";
+
+        // ------------------------------------------------------------
+        // Count total rows for pagination
+        // ------------------------------------------------------------
+        $countSql = "SELECT COUNT(*) FROM geofences g $whereSql";
+        $stmt = $pdo->prepare($countSql);
+        $stmt->execute($params);
+        $totalRows = intval($stmt->fetchColumn());
+
+        $totalPages = max(1, ceil($totalRows / $pageSize));
+
+        // ------------------------------------------------------------
+        // Fetch paginated geofences
+        // ------------------------------------------------------------
+        $sql = "
+            SELECT 
+                g.id,
+                g.name,
+                g.type,
+                g.active,
+                g.applies_to_all_vehicles,
+                g.created_at,
+                (
+                    SELECT COUNT(*) FROM geofence_vehicle gv
+                    WHERE gv.geofence_id = g.id
+                ) AS vehicle_count
+            FROM geofences g
+            $whereSql
+            ORDER BY $sort $order
+            LIMIT :limit OFFSET :offset
+        ";
+
+        $stmt = $pdo->prepare($sql);
+
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+
+        $stmt->bindValue(':limit', $pageSize, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+
+        $stmt->execute();
+        $geofences = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // ------------------------------------------------------------
+        // View Render
+        // ------------------------------------------------------------
+        $this->view('admin/geofences/index', [
+            'geofences'   => $geofences,
+            'page'        => $page,
+            'pageSize'    => $pageSize,
+            'totalPages'  => $totalPages,
+            'search'      => $search,
+            'active'      => $active,
+            'type'        => $type,
+            'sort'        => $sort,
+            'order'       => $order
+        ]);
     }
 
-    /**
-     * Show create form.
-     */
+
     public function create(): void
     {
-        $this->view('admin/geofences/create');
+        $pdo = Database::pdo();
+        $vehicles = $pdo->query("
+            SELECT id, vehicle_number, make, model, license_plate
+            FROM vehicles
+            ORDER BY vehicle_number ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        $this->view('admin/geofences/create', compact('vehicles'));
     }
 
-    /**
-     * Store a new geofence (supports AJAX from the Live Map).
-     */
     public function store(): void
     {
         $pdo = Database::pdo();
 
+        $type        = $_POST['type'] ?? null;
         $name        = trim($_POST['name'] ?? '');
         $description = trim($_POST['description'] ?? '');
-        $type        = $_POST['type'] ?? 'circle';
+        $active      = isset($_POST['active']) ? 1 : 0;
+        $createdBy   = $_SESSION['user_id'] ?? null;
 
-        if ($name === '' || !in_array($type, ['circle', 'polygon'], true)) {
-            http_response_code(400);
-            exit('Invalid geofence data');
+        if (!$name || !$type) {
+            $this->redirect("/admin/geofences?error=Missing required fields");
         }
 
-        $appliesAll = isset($_POST['applies_to_all_vehicles']) ? 1 : 0;
-        $active     = isset($_POST['active']) ? 1 : 0;
+        // Validate geometry ------------------------------------------
+        $centerLat = $_POST['center_lat'] ?? null;
+        $centerLng = $_POST['center_lng'] ?? null;
+        $radius    = $_POST['radius_m']   ?? null;
+        $polyJson  = $_POST['polygon_points'] ?? null;
 
-        //
-        // CIRCLE
-        //
-        if ($type === 'circle') {
-            $centerLat = floatval($_POST['center_lat'] ?? 0);
-            $centerLng = floatval($_POST['center_lng'] ?? 0);
-            $radius    = intval($_POST['radius_m'] ?? 0);
-            $polygonJSON = null;
-        }
+        $centerLat = $centerLat !== '' ? floatval($centerLat) : null;
+        $centerLng = $centerLng !== '' ? floatval($centerLng) : null;
+        $radius    = $radius    !== '' ? floatval($radius)    : null;
 
-        //
-        // POLYGON
-        //
-        if ($type === 'polygon') {
-            $rawPoints = $_POST['polygon_points'] ?? '';
-
-            $decoded = json_decode($rawPoints, true);
-            if (!$decoded || !is_array($decoded)) {
-                http_response_code(400);
-                exit('Invalid polygon data');
+        $polygonPoints = null;
+        if (!empty($polyJson)) {
+            try {
+                $polygonPoints = json_decode($polyJson, true, 512, JSON_THROW_ON_ERROR);
+            } catch (\Throwable $e) {
+                $this->redirect("/admin/geofences?error=Invalid polygon JSON");
             }
-
-            // Sanitize floats
-            $clean = array_map(fn($pair) => [
-                floatval($pair[0]),
-                floatval($pair[1])
-            ], $decoded);
-
-            $polygonJSON = json_encode($clean, JSON_UNESCAPED_UNICODE);
-
-            // Circle values not used
-            $centerLat = null;
-            $centerLng = null;
-            $radius    = null;
         }
 
-        //
-        // INSERT
-        //
+        // Validate based on type -------------------------------------
+        if ($type === 'circle') {
+            if (!$centerLat || !$centerLng || !$radius) {
+                $this->redirect("/admin/geofences?error=Circle requires center & radius");
+            }
+        }
+
+        if ($type === 'polygon') {
+            if (!$polygonPoints || !is_array($polygonPoints) || count($polygonPoints) < 3) {
+                $this->redirect("/admin/geofences?error=Polygon must have at least 3 points");
+            }
+        }
+
+        // Insert geofence --------------------------------------------
         $stmt = $pdo->prepare("
             INSERT INTO geofences
-            (name, description, type, center_lat, center_lng, radius_m, polygon_points, 
-             applies_to_all_vehicles, active, created_by)
+            (name, description, type, center_lat, center_lng, radius_m, polygon_points, active, created_by, updated_by)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
@@ -97,112 +186,141 @@ class GeofenceController extends Controller
             $centerLat,
             $centerLng,
             $radius,
-            $polygonJSON,
-            $appliesAll,
+            $polygonPoints ? json_encode($polygonPoints) : null,
             $active,
-            $_SESSION['user_id'] ?? null
+            $createdBy,
+            $createdBy
         ]);
+        $geofenceId = $pdo->lastInsertId();
 
-        // If coming from AJAX modal → return OK
-        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
-            echo "OK";
-            return;
-        }
+        // Vehicle assignment ------------------------------------------
+        $appliesAll = isset($_POST['applies_to_all_vehicles']);
+        $vehicleIds = $_POST['vehicle_ids'] ?? [];
 
-        $this->redirect('/admin/geofences');
+        $pdo->prepare("DELETE FROM geofence_vehicle WHERE geofence_id = ?")
+            ->execute([$geofenceId]);
 
-    }
+        if (!$appliesAll && !empty($vehicleIds)) {
+            $insert = $pdo->prepare("
+                INSERT INTO geofence_vehicle (geofence_id, vehicle_id) 
+                VALUES (?, ?)
+            ");
 
-    /**
-     * Edit a geofence.
-     */
-    public function edit(int $id): void
-    {
-        $geofence = Geofence::find($id);
-        if (!$geofence) {
-            http_response_code(404);
-            echo "Geofence not found";
-            return;
-        }
-
-        $this->view('admin/geofences/edit', compact('geofence'));
-    }
-
-    /**
-     * Update geofence.
-     */
-    public function update(): void
-    {
-        $id   = intval($_POST['id'] ?? 0);
-        $name = trim($_POST['name'] ?? '');
-        $type = $_POST['type'] ?? 'circle';
-
-        if ($id <= 0 || $name === '' || !in_array($type, ['circle', 'polygon'], true)) {
-            $this->redirect('/admin/geofences');
-        }
-
-        $appliesAll = isset($_POST['applies_to_all_vehicles']) ? 1 : 0;
-        $active     = isset($_POST['active']) ? 1 : 0;
-
-        //
-        // Build data array
-        //
-        $data = [
-            'name'        => $name,
-            'description' => trim($_POST['description'] ?? ''),
-            'type'        => $type,
-            'applies_to_all_vehicles' => $appliesAll,
-            'active'      => $active,
-            'center_lat'  => null,
-            'center_lng'  => null,
-            'radius_m'    => null,
-            'polygon_points' => null,
-        ];
-
-        if ($type === 'circle') {
-            $data['center_lat'] = floatval($_POST['center_lat'] ?? 0);
-            $data['center_lng'] = floatval($_POST['center_lng'] ?? 0);
-            $data['radius_m']   = intval($_POST['radius_m'] ?? 0);
-        }
-
-        if ($type === 'polygon') {
-            $raw = $_POST['polygon_points'] ?? '';
-            $decoded = json_decode($raw, true);
-
-            if (is_array($decoded)) {
-                $clean = array_map(fn($pair) => [
-                    floatval($pair[0]),
-                    floatval($pair[1])
-                ], $decoded);
-
-                $data['polygon_points'] = json_encode($clean, JSON_UNESCAPED_UNICODE);
+            foreach ($vehicleIds as $id) {
+                $insert->execute([$geofenceId, (int)$id]);
             }
         }
 
-        Geofence::updateById($id, $data);
-
-        $this->redirect('/admin/geofences');
+        $this->redirect("/admin/geofences?success=Created");
     }
 
-    /**
-     * Delete geofence.
-     */
-    public function delete(): void
+    public function edit(?int $id = null): void
     {
-        $id = (int)($_POST['id'] ?? 0);
+        if (!$id) {
+            // redirect or show error
+            header("Location: /admin/geofences");
+            exit;
+        }
+        $pdo = Database::pdo();
 
-        if ($id > 0) {
-            Geofence::delete($id);
+        $geofence = $pdo->prepare("SELECT * FROM geofences WHERE id = ?");
+        $geofence->execute([$id]);
+        $geofence = $geofence->fetch(PDO::FETCH_ASSOC);
+
+        if (!$geofence)
+            $this->redirect("/admin/geofences?error=Not found");
+
+        $vehicles = $pdo->query("
+            SELECT id, vehicle_number, make, model, license_plate
+            FROM vehicles
+            ORDER BY vehicle_number ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        $assigned = $pdo->prepare("
+            SELECT vehicle_id FROM geofence_vehicle WHERE geofence_id = ?
+        ");
+        $assigned->execute([$id]);
+        $assignedVehicles = array_column($assigned->fetchAll(PDO::FETCH_ASSOC), 'vehicle_id');
+
+        $this->view('admin/geofences/edit', compact('geofence', 'vehicles', 'assignedVehicles'));
+    }
+
+    public function update(int $id): void
+    {
+        $pdo = Database::pdo();
+
+        $type        = $_POST['type'] ?? null;
+        $name        = trim($_POST['name'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $active      = isset($_POST['active']) ? 1 : 0;
+        $updatedBy   = $_SESSION['user_id'] ?? null;
+
+        if (!$name || !$type)
+            $this->redirect("/admin/geofences?error=Missing required fields");
+
+        // geometry validation same as store()
+        $centerLat = $_POST['center_lat'] ?? null;
+        $centerLng = $_POST['center_lng'] ?? null;
+        $radius    = $_POST['radius_m']   ?? null;
+        $polyJson  = $_POST['polygon_points'] ?? null;
+
+        $centerLat = $centerLat !== '' ? floatval($centerLat) : null;
+        $centerLng = $centerLng !== '' ? floatval($centerLng) : null;
+        $radius    = $radius    !== '' ? floatval($radius)    : null;
+
+        $polygonPoints = null;
+        if (!empty($polyJson)) {
+            try {
+                $polygonPoints = json_decode($polyJson, true, 512, JSON_THROW_ON_ERROR);
+            } catch (\Throwable $e) {
+                $this->redirect("/admin/geofences?error=Invalid polygon JSON");
+            }
         }
 
-        $this->redirect('/admin/geofences');
+        // Update geofence
+        $stmt = $pdo->prepare("
+            UPDATE geofences
+            SET name=?, description=?, type=?, center_lat=?, center_lng=?, radius_m=?, polygon_points=?, active=?, updated_by=?
+            WHERE id=?
+        ");
+
+        $stmt->execute([
+            $name,
+            $description,
+            $type,
+            $centerLat,
+            $centerLng,
+            $radius,
+            $polygonPoints ? json_encode($polygonPoints) : null,
+            $active,
+            $updatedBy,
+            $id
+        ]);
+
+        // Vehicle assignment
+        $pdo->prepare("DELETE FROM geofence_vehicle WHERE geofence_id = ?")
+            ->execute([$id]);
+
+        $appliesAll = isset($_POST['applies_to_all_vehicles']);
+        $vehicleIds = $_POST['vehicle_ids'] ?? [];
+
+        if (!$appliesAll && !empty($vehicleIds)) {
+            $insert = $pdo->prepare("INSERT INTO geofence_vehicle (geofence_id, vehicle_id) VALUES (?, ?)");
+            foreach ($vehicleIds as $v) {
+                $insert->execute([$id, (int)$v]);
+            }
+        }
+
+        $this->redirect("/admin/geofences?success=Updated");
     }
 
-    /**
-     * Simple placeholder (optional future feature).
-     */
-    public function alerts(): void
+    public function delete(int $id): void
     {
-        $this->view('admin/geofences/alerts');
+        $pdo = Database::pdo();
+
+        $pdo->prepare("DELETE FROM geofence_vehicle WHERE geofence_id = ?")->execute([$id]);
+        $pdo->prepare("DELETE FROM geofences WHERE id = ?")->execute([$id]);
+
+        $this->redirect("/admin/geofences?success=Deleted");
     }
 }
