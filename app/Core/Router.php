@@ -1,102 +1,150 @@
 <?php
 namespace App\Core;
 
+use App\Middleware\MiddlewareKernel;
+
 class Router
 {
-    private array $routes = [
-        'GET' => [],
-        'POST' => [],
+    private array $routes = [];
+    private array $currentGroup = [
+        'prefix' => '',
+        'middleware' => []
     ];
 
-    public function get(string $path, string $handler, array $middleware = []): void
+    /**
+     * Normalize URI — strip query + trailing slash
+     */
+    private function normalize(string $uri): string
     {
-        $this->addRoute('GET', $path, $handler, $middleware);
+        $uri = parse_url($uri, PHP_URL_PATH);
+
+        if ($uri !== '/' && str_ends_with($uri, '/')) {
+            $uri = rtrim($uri, '/');
+        }
+
+        return $uri;
     }
 
-    public function post(string $path, string $handler, array $middleware = []): void
+    /**
+     * GET / POST helpers
+     */
+    public function get(string $pattern, string $handler, array $middleware = []): void
     {
-        $this->addRoute('POST', $path, $handler, $middleware);
+        $this->register('GET', $pattern, $handler, $middleware);
     }
 
-    private function addRoute(string $method, string $path, string $handler, array $middleware): void
+    public function post(string $pattern, string $handler, array $middleware = []): void
     {
-        // Convert route patterns into regex
-        $pattern = preg_replace('#\{([^/]+)\}#', '(?P<$1>[^/]+)', $path);
-        $pattern = "#^" . $pattern . "$#";
+        $this->register('POST', $pattern, $handler, $middleware);
+    }
 
-        $this->routes[$method][] = [
-            'pattern'   => $pattern,
-            'handler'   => $handler,
-            'middleware'=> $middleware,
-            'raw_path'  => $path
+    /**
+     * Route groups — like Laravel
+     */
+    public function group(string $prefix, array $middleware, callable $callback): void
+    {
+        $previous = $this->currentGroup;
+
+        // Apply new group prefix & middleware
+        $this->currentGroup = [
+            'prefix' => $previous['prefix'] . $prefix,
+            'middleware' => array_merge($previous['middleware'], $middleware)
         ];
+
+        $callback($this);
+
+        // Restore previous group after callback
+        $this->currentGroup = $previous;
     }
 
-    public function dispatch(string $uri, string $method): void
+    /**
+     * Register a route
+     */
+    private function register(string $method, string $pattern, string $handler, array $middleware): void
     {
-        $path = parse_url($uri, PHP_URL_PATH);
-        $method = strtoupper($method);
+        $pattern = $this->currentGroup['prefix'] . $pattern;
+        $pattern = $this->normalize($pattern);
 
-        foreach ($this->routes[$method] as $route) {
-            if (preg_match($route['pattern'], $path, $matches)) {
+        $isDynamic = str_contains($pattern, '{');
 
-                // Extract params (only named ones)
-                $params = [];
-                foreach ($matches as $key => $val) {
-                    if (!is_int($key)) {
-                        $params[$key] = $val;
-                    }
-                }
+        $combinedMiddleware = array_merge($this->currentGroup['middleware'], $middleware);
 
-                // Middleware
-                foreach ($route['middleware'] as $middleware) {
-                    if (is_object($middleware) && method_exists($middleware, 'handle')) {
-                        $middleware->handle();
-                    }
-                }
+        $route = [
+            'pattern'    => $pattern,
+            'handler'    => $handler,
+            'middleware' => $combinedMiddleware,
+            'dynamic'    => $isDynamic
+        ];
 
-                // Determine controller + method
-                [$controllerName, $methodName] = explode('@', $route['handler']);
-                $controllerClass = 'App\\Controllers\\' . $controllerName;
+        if ($isDynamic) {
+            $this->routes[$method]['dynamic'][] = $route;
+        } else {
+            $this->routes[$method]['static'][$pattern] = $route;
+        }
+    }
 
-                // Admin controller protection
-               if (str_starts_with($controllerClass, 'App\\Controllers\\Admin\\')) {
-                    if (empty($_SESSION['role']) || strtolower($_SESSION['role']) !== 'admin') {
-                        http_response_code(403);
+    /**
+     * Dispatcher
+     */
+    public function dispatch(string $uri, string $httpMethod): void
+    {
+        $uri = $this->normalize($uri);
+        $method = strtoupper($httpMethod);
 
-                        $error403 = __DIR__ . '/../../views/errors/403.php';
-                        if (file_exists($error403)) {
-                            include $error403;
-                        } else {
-                            echo "403 Forbidden – Admin Access Only";
-                        }
-                        return;
-                    }
-                }
+        $static  = $this->routes[$method]['static']  ?? [];
+        $dynamic = $this->routes[$method]['dynamic'] ?? [];
 
+        // Static match
+        if (isset($static[$uri])) {
+            $this->execute($static[$uri]);
+            return;
+        }
 
-                if (!class_exists($controllerClass)) {
-                    http_response_code(500);
-                    echo "Controller not found: $controllerClass";
-                    return;
-                }
+        // Dynamic match
+        foreach ($dynamic as $route) {
+            $regex = preg_replace('#\{[^/]+\}#', '([^/]+)', $route['pattern']);
+            $regex = "#^{$regex}$#";
 
-                $controller = new $controllerClass();
-
-                if (!method_exists($controller, $methodName)) {
-                    http_response_code(500);
-                    echo "Method not found: $methodName";
-                    return;
-                }
-
-                // Pass parameters
-                $controller->$methodName(...array_values($params));
+            if (preg_match($regex, $uri, $matches)) {
+                array_shift($matches);
+                $this->execute($route, $matches);
                 return;
             }
         }
 
-        // No match
         http_response_code(404);
-        echo "404 Not Found";
+        echo "<h1>404 Not Found</h1>";
+    }
+
+    /**
+     * Execute the route using the middleware pipeline
+     */
+    private function execute(array $route, array $params = []): void
+    {
+        $kernel = new MiddlewareKernel();
+        $middlewareList = $kernel->resolve($route['middleware']);
+
+        // Handler
+        $controllerHandler = function($request) use ($route, $params) {
+            [$controller, $method] = explode('@', $route['handler']);
+            $controllerClass = "App\\Controllers\\" . $controller;
+            $instance = new $controllerClass();
+
+            call_user_func_array([$instance, $method], $params);
+        };
+
+        // Pipeline
+        $pipeline = array_reduce(
+            array_reverse($middlewareList),
+            function ($next, $mwClass) {
+                return function ($request) use ($next, $mwClass) {
+                    $mw = new $mwClass();
+                    return $mw->handle($request, $next);
+                };
+            },
+            $controllerHandler
+        );
+
+        $pipeline($_REQUEST);
     }
 }

@@ -6,9 +6,12 @@ if (!isset($pageTitle)) {
     $pageTitle = 'Team Transport';
 }
 
-$authUser   = $_SESSION['username'] ?? null;
-$role       = $_SESSION['role'] ?? null;
+$authUser = $_SESSION['user']['username'] ?? null;
+$role     = $_SESSION['user']['role'] ?? null;
+$userId   = $_SESSION['user']['id'] ?? null;
+$fullName = $_SESSION['user']['full_name'] ?? null;
 $currentUri = $_SERVER['REQUEST_URI'] ?? '/';
+
 
 // Generate dynamic breadcrumbs
 $breadcrumbs = Breadcrumbs::generate($currentUri);

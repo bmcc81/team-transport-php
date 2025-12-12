@@ -32,10 +32,12 @@
                         <tbody>
                         <?php foreach ($customers as $c): ?>
                             <tr>
-                                <td><?= htmlspecialchars($c['customer_company_name']) ?></td>
-                                <td><?= htmlspecialchars($c['customer_contact_first_name'].' '.$c['customer_contact_last_name']) ?></td>
-                                <td><?= htmlspecialchars($c['customer_email']) ?></td>
-                                <td><?= htmlspecialchars($c['customer_contact_city']) ?></td>
+                                <td><?= htmlspecialchars($c['customer_company_name'] ?? '') ?></td>
+                                <td><?= htmlspecialchars(
+                                        ($c['customer_contact_first_name'] ?? '') . ' ' . ($c['customer_contact_last_name'] ?? '')
+                                    ) ?></td>
+                                <td><?= htmlspecialchars($c['customer_email'] ?? '') ?></td>
+                                <td><?= htmlspecialchars($c['customer_contact_city'] ?? '') ?></td>
                                 <td>
                                     <a href="/admin/customers/edit/<?= $c['id'] ?>"
                                        class="btn btn-sm btn-outline-primary">

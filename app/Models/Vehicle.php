@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use App\Database\Database;
@@ -6,90 +7,117 @@ use PDO;
 
 class Vehicle
 {
-public static function all(): array
-    {
-        $pdo = Database::pdo();
-        $stmt = $pdo->query("
-            SELECT 
-                id,
-                vehicle_number,
-                make,
-                model,
-                year,
-                license_plate,
-                vin,
-                capacity,
-                status,
-                maintenance_status,
-                assigned_driver_id,
-                created_at,
-                updated_at,
-                latitude,
-                longitude,
-                last_lat,
-                last_lng,
-                last_telemetry_at
-            FROM vehicles
-            ORDER BY vehicle_number ASC
-        ");
+    public int $id;
+    public ?string $vehicle_number;
+    public ?string $make;
+    public ?string $model;
+    public ?int $year;
+    public ?string $license_plate;
+    public ?string $vin;
+    public ?int $capacity;
+    public string $status;
+    public string $maintenance_status;
+    public ?int $assigned_driver_id;
+    public ?float $latitude;
+    public ?float $longitude;
+    public string $created_at;
+    public string $updated_at;
 
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    /**
+     * Convert DB row -> Vehicle object
+     */
+    private static function hydrate(array $data): Vehicle
+    {
+        $v = new Vehicle();
+
+        $v->id                 = (int)$data['id'];
+        $v->vehicle_number     = $data['vehicle_number'] ?? null;
+        $v->make               = $data['make'] ?? null;
+        $v->model              = $data['model'] ?? null;
+        $v->year               = isset($data['year']) ? (int)$data['year'] : null;
+        $v->license_plate      = $data['license_plate'] ?? null;
+        $v->vin                = $data['vin'] ?? null;
+        $v->capacity           = isset($data['capacity']) ? (int)$data['capacity'] : null;
+        $v->status             = $data['status'] ?? 'available';
+        $v->maintenance_status = $data['maintenance_status'] ?? 'ok';
+        $v->assigned_driver_id = isset($data['assigned_driver_id']) ? (int)$data['assigned_driver_id'] : null;
+        $v->latitude           = isset($data['latitude']) ? (float)$data['latitude'] : null;
+        $v->longitude          = isset($data['longitude']) ? (float)$data['longitude'] : null;
+        $v->created_at         = $data['created_at'] ?? '';
+        $v->updated_at         = $data['updated_at'] ?? '';
+
+        return $v;
     }
 
-    public static function find($id): ?array
+    /**
+     * Fetch all vehicles as objects.
+     */
+    public static function all(): array
     {
         $pdo = Database::pdo();
+
+        $stmt = $pdo->query("SELECT * FROM vehicles ORDER BY vehicle_number ASC");
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return array_map(fn($row) => self::hydrate($row), $rows);
+    }
+
+    /**
+     * Find a single vehicle.
+     */
+    public static function find(int|string $id): ?Vehicle
+    {
+        $pdo = Database::pdo();
+
+        $stmt = $pdo->prepare("SELECT * FROM vehicles WHERE id = ?");
+        $stmt->execute([$id]);
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row ? self::hydrate($row) : null;
+    }
+
+    /**
+     * Assign driver.
+     */
+    public function assignToDriver(int $driverId): bool
+    {
+        $pdo = Database::pdo();
+
         $stmt = $pdo->prepare("
-            SELECT 
-                id,
-                vehicle_number,
-                make,
-                model,
-                year,
-                license_plate,
-                vin,
-                capacity,
-                status,
-                maintenance_status,
-                assigned_driver_id,
-                created_at,
-                updated_at,
-                latitude,
-                longitude,
-                last_lat,
-                last_lng,
-                last_telemetry_at
-            FROM vehicles
+            UPDATE vehicles
+            SET assigned_driver_id = ?, updated_at = NOW()
             WHERE id = ?
         ");
 
-        $stmt->execute([$id]);
-        return $stmt->fetch(\PDO::FETCH_ASSOC) ?: null;
+        $ok = $stmt->execute([$driverId, $this->id]);
+
+        if ($ok) {
+            $this->assigned_driver_id = $driverId;
+        }
+
+        return $ok;
     }
 
-    public static function allActive(): array
-    {
-        $pdo = Database::pdo();
-        $stmt = $pdo->query("
-            SELECT id, vehicle_number, make, model, license_plate, status
-            FROM vehicles
-            WHERE status = 'active'
-            ORDER BY vehicle_number ASC
-        ");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    public static function allSimple(): array
+    /**
+     * Unassign driver.
+     */
+    public function unassign(): bool
     {
         $pdo = Database::pdo();
 
-        $stmt = $pdo->query("
-            SELECT id, vehicle_number, make, model, license_plate
-            FROM vehicles
-            ORDER BY vehicle_number ASC
+        $stmt = $pdo->prepare("
+            UPDATE vehicles
+            SET assigned_driver_id = NULL, updated_at = NOW()
+            WHERE id = ?
         ");
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
+        $ok = $stmt->execute([$this->id]);
 
+        if ($ok) {
+            $this->assigned_driver_id = null;
+        }
+
+        return $ok;
+    }
 }
