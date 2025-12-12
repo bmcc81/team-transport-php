@@ -196,6 +196,38 @@ $availabilityPct = round(($stats['vehicles_available'] ?? 0) / $totalVehicles * 
         </div>
     </div>
 
+    <!-- DRIVERS ASSIGNED -->
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100 dashboard-kpi">
+            <div class="card-body d-flex flex-column">
+
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="text-muted text-uppercase small">Drivers Assigned</div>
+                        <div class="fw-bold fs-2">
+                            <?= (int)($stats['drivers_assigned'] ?? 0) ?>
+                        </div>
+                    </div>
+                    <i class="bi bi-person-lines-fill fs-3 text-info"></i>
+                </div>
+
+                <span class="badge bg-info text-dark w-fit mb-2">
+                    Currently working
+                </span>
+
+                <div class="mt-auto pt-2 border-top">
+                    <a href="/admin/drivers?status=assigned"
+                    class="small text-decoration-none fw-semibold">
+                        View assigned drivers
+                        <i class="bi bi-arrow-right-short"></i>
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
 </div>
 
 <?php require __DIR__ . '/../layout/footer.php'; ?>
