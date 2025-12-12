@@ -35,6 +35,7 @@ unset($v);
                         <option value="">— Select vehicle —</option>
                         <?php foreach ($vehicles as $v): ?>
                             <option value="<?= $v['id'] ?>"
+                                <?= ($currentVehicleId == $v['id']) ? 'selected' : '' ?>
                                 <?= (
                                     $v['status'] === 'maintenance' ||
                                     $v['status'] === 'retired' ||
@@ -45,7 +46,7 @@ unset($v);
 
                                 <?php if ($v['maintenance_status'] !== 'ok'): ?>
                                     — maintenance
-                                <?php elseif ($v['assigned_driver_id']): ?>
+                                <?php elseif ($v['assigned_driver_id'] && $v['assigned_driver_id'] != $driver['id']): ?>
                                     — assigned to <?= htmlspecialchars($v['assigned_driver_name']) ?>
                                 <?php endif; ?>
                             </option>

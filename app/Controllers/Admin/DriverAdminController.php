@@ -173,26 +173,36 @@ class DriverAdminController extends Controller
             return;
         }
 
-        // Fetch available vehicles
+        // Fetch currently assigned vehicle
         $stmt = $pdo->prepare("
-    SELECT 
-        v.id,
-        v.vehicle_number,
-        v.status,
-        v.maintenance_status,
-        v.assigned_driver_id,
-        u.full_name AS assigned_driver_name
-    FROM vehicles v
-    LEFT JOIN users u ON u.id = v.assigned_driver_id
-    WHERE v.status != 'retired'
-    ORDER BY v.vehicle_number
-");
-$stmt->execute();
+            SELECT id
+            FROM vehicles
+            WHERE assigned_driver_id = ?
+        ");
+        $stmt->execute([$driverId]);
+        $currentVehicleId = $stmt->fetchColumn();
 
-$vehicles = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        // Fetch vehicles
+        $stmt = $pdo->prepare("
+            SELECT 
+                v.id,
+                v.vehicle_number,
+                v.status,
+                v.maintenance_status,
+                v.assigned_driver_id,
+                u.full_name AS assigned_driver_name
+            FROM vehicles v
+            LEFT JOIN users u ON u.id = v.assigned_driver_id
+            WHERE v.status != 'retired'
+            ORDER BY v.vehicle_number
+        ");
+        $stmt->execute();
+        $vehicles = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
         $this->view('admin/drivers/assign_vehicle', [
-            'driver'   => $driver,
-            'vehicles' => $vehicles
+            'driver'           => $driver,
+            'vehicles'         => $vehicles,
+            'currentVehicleId' => $currentVehicleId
         ]);
     }
 
