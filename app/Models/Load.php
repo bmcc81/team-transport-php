@@ -198,4 +198,39 @@ class Load
             ':id'     => $id,
         ]);
     }
+
+    public static function hasPOD(int $loadId): bool
+    {
+        $pdo = Database::pdo();
+
+        $stmt = $pdo->prepare("
+            SELECT 1
+            FROM load_documents
+            WHERE load_id = :load_id
+            AND document_type = 'pod'
+            LIMIT 1
+        ");
+
+        $stmt->execute(['load_id' => $loadId]);
+
+        return (bool) $stmt->fetchColumn();
+    }
+
+    public static function hasVehicle(int $loadId): bool
+    {
+        $pdo = Database::pdo();
+
+        $stmt = $pdo->prepare("
+            SELECT vehicle_id
+            FROM loads
+            WHERE load_id = :id
+            AND vehicle_id IS NOT NULL
+            LIMIT 1
+        ");
+
+        $stmt->execute(['id' => $loadId]);
+
+        return (bool) $stmt->fetchColumn();
+    }
+
 }

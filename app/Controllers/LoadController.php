@@ -70,16 +70,79 @@ class LoadController extends Controller
 
     public function store(): void
     {
+        $pdo = Database::pdo();
+
         $data = $_POST;
         $data['created_by_user_id'] = $_SESSION['user_id'] ?? null;
-
-        // Basic defaults
         $data['load_status'] = $data['load_status'] ?? 'pending';
         $data['notes'] = $data['notes'] ?? '';
 
-        $id = Load::create($data);
-        $this->redirect('/loads/view?id=' . $id);
+        $pdo->beginTransaction();
+
+        try {
+            // 1️⃣ Create load
+            $loadId = Load::create($data);
+
+            // 2️⃣ Handle document upload (optional)
+            if (!empty($_FILES['document_file']['tmp_name'])) {
+
+                $docType = $_POST['document_type'] ?? 'other';
+                $file    = $_FILES['document_file'];
+
+                if ($file['error'] === UPLOAD_ERR_OK) {
+
+                    // Validate file type
+                    if ($file['type'] !== 'application/pdf') {
+                        throw new \RuntimeException('Only PDF files are allowed.');
+                    }
+
+                    $uploadDir = __DIR__ . "/../../public/uploads/load_documents/{$loadId}";
+                    if (!is_dir($uploadDir)) {
+                        mkdir($uploadDir, 0775, true);
+                    }
+
+                    $filename = strtoupper($docType) . "_{$loadId}.pdf";
+                    $targetPath = "{$uploadDir}/{$filename}";
+
+                    move_uploaded_file($file['tmp_name'], $targetPath);
+
+                    // Insert document record
+                    $stmt = $pdo->prepare("
+                        INSERT INTO load_documents (
+                            load_id,
+                            uploaded_by_user_id,
+                            document_type,
+                            file_path,
+                            file_extension
+                        ) VALUES (
+                            :load_id,
+                            :user_id,
+                            :doc_type,
+                            :file_path,
+                            'pdf'
+                        )
+                    ");
+
+                    $stmt->execute([
+                        'load_id'   => $loadId,
+                        'user_id'   => $_SESSION['user_id'],
+                        'doc_type'  => $docType,
+                        'file_path' => "/uploads/load_documents/{$loadId}/{$filename}",
+                    ]);
+                }
+            }
+
+            $pdo->commit();
+
+            $_SESSION['success'] = 'Load created successfully.';
+            $this->redirect('/loads/view?id=' . $loadId);
+
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
     }
+
 
     public function edit(): void
     {
@@ -100,6 +163,9 @@ class LoadController extends Controller
         $customers = Customer::all();
         $drivers   = User::drivers();
 
+        $load['has_vehicle'] = Load::hasVehicle($load['load_id']);
+        $load['has_pod'] = Load::hasPOD($load['load_id']);
+
         $this->view('loads/edit', [
             'load'      => $load,
             'customers' => $customers,
@@ -107,7 +173,7 @@ class LoadController extends Controller
         ]);
     }
 
-    public function update(): void
+  public function update(): void
     {
         $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
         if ($id <= 0) {
@@ -124,6 +190,28 @@ class LoadController extends Controller
             ? (int) $_POST['driver_id']
             : null;
 
+        // 🚨 REQUIRE VEHICLE BEFORE IN-TRANSIT
+        if (
+            isset($data['load_status']) &&
+            $data['load_status'] === 'in_transit' &&
+            !Load::hasVehicle($id)
+        ) {
+            $_SESSION['error'] = 'A vehicle must be assigned before dispatching this load.';
+            $this->redirect('/loads/edit?id=' . $id);
+            return;
+        }
+
+        // 🚨 ENFORCE POD BEFORE DELIVERY (GUARD)
+        if (
+            isset($data['load_status']) &&
+            $data['load_status'] === 'delivered' &&
+            !Load::hasPOD($id)
+        ) {
+            $_SESSION['error'] = 'Proof of Delivery (POD) is required before marking this load as delivered.';
+            $this->redirect('/loads/edit?id=' . $id);
+            return;
+        }
+
         $pdo->beginTransaction();
 
         try {
@@ -132,7 +220,7 @@ class LoadController extends Controller
             $stmt->execute(['id' => $id]);
             $oldDriverId = $stmt->fetchColumn();
 
-            // Update load (THIS must persist driver_id)
+            // Update load
             Load::update($id, $data);
 
             // Driver state transitions
