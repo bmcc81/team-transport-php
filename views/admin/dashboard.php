@@ -40,6 +40,12 @@ $recentLoads = $pdo->query("
     ORDER BY created_at DESC
     LIMIT 5
 ")->fetchAll(PDO::FETCH_ASSOC);
+
+$loadStatusCounts = $pdo->query("
+    SELECT status, COUNT(*) AS total
+    FROM loads
+    GROUP BY status
+")->fetchAll(PDO::FETCH_KEY_PAIR);
 ?>
 
 <div class="container-fluid mt-3">
@@ -148,6 +154,26 @@ $recentLoads = $pdo->query("
 
             </div>
 
+            <div class="row g-3 mb-4">
+
+                <!-- Loads by Status Chart -->
+                <div class="col-md-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light fw-semibold">
+                            Loads by Status
+                        </div>
+                        <div class="card-body d-flex justify-content-center align-items-center">
+                            <?php if ($loadStatusCounts): ?>
+                                <canvas id="loadsStatusChart" style="max-height:180px"></canvas>
+                            <?php else: ?>
+                                <span class="text-muted small">No load data available</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
             <!-- RECENT ACTIVITY -->
             <div class="card shadow-sm mb-5">
                 <div class="card-header bg-light fw-semibold">
@@ -188,5 +214,86 @@ $recentLoads = $pdo->query("
         </main>
     </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(() => {
+    const ctx = document.getElementById('loadsStatusChart');
+    if (!ctx) return;
 
+    const data = <?= json_encode(array_values($loadStatusCounts)) ?>;
+    const labels = <?= json_encode(array_map('ucfirst', array_keys($loadStatusCounts))) ?>;
+
+    if (!data.length) return;
+
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{
+                data,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12,
+                        font: { size: 11 }
+                    }
+                }
+            }
+        }
+    });
+})();
+</script>
+<script>
+(() => {
+    const ctx = document.getElementById('loadsStatusChart');
+    if (!ctx) return;
+
+    const data   = <?= json_encode(array_values($loadStatusCounts)) ?>;
+    const labels = <?= json_encode(array_map('ucfirst', array_keys($loadStatusCounts))) ?>;
+
+    if (!data.length) return;
+
+    const statusColors = {
+        Pending:     '#6c757d',
+        Assigned:    '#0d6efd',
+        In_transit:  '#ffc107',
+        Delivered:   '#198754',
+        Cancelled:   '#dc3545'
+    };
+
+    const colors = labels.map(l => statusColors[l] ?? '#adb5bd');
+
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{
+                data,
+                backgroundColor: colors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12,
+                        font: { size: 11 }
+                    }
+                }
+            }
+        }
+    });
+})();
+</script>
 <?php require __DIR__ . '/../layout/footer.php'; ?>
