@@ -1,55 +1,26 @@
 <?php
+
 namespace App\Middleware;
 
-class AuthMiddleware
+use App\Support\Auth;
+
+class AuthMiddleware implements MiddlewareInterface
 {
-    /**
-     * Require the user to be logged in.
-     */
-    public static function requireAuth(): void
+    public function handle($request, callable $next)
     {
-        if (!isset($_SESSION['user_id'])) {
-            $_SESSION['flash_error'] = "Please login to continue.";
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+        // Public routes
+        if (in_array($uri, ['/login', '/logout'])) {
+            return $next($request);
+        }
+
+        // If not authenticated → redirect to login
+        if (!Auth::check()) {
             header("Location: /login");
             exit;
         }
-    }
 
-    /**
-     * Require a specific role.
-     *
-     * Example:
-     * AuthMiddleware::requireRole("admin");
-     */
-    public static function requireRole(string $role): void
-    {
-        self::requireAuth();
-
-        $currentRole = $_SESSION['role'] ?? null;
-
-        if ($currentRole !== $role) {
-            http_response_code(403);
-            $_SESSION['flash_error'] = "You do not have permission to access this section.";
-            header("Location: /dashboard");
-            exit;
-        }
-    }
-
-    /**
-     * Require one of multiple allowed roles.
-     * Example: requireAnyRole(['admin','dispatcher']);
-     */
-    public static function requireAnyRole(array $roles): void
-    {
-        self::requireAuth();
-
-        $currentRole = $_SESSION['role'] ?? null;
-
-        if (!in_array($currentRole, $roles, true)) {
-            http_response_code(403);
-            $_SESSION['flash_error'] = "Access denied.";
-            header("Location: /dashboard");
-            exit;
-        }
+        return $next($request);
     }
 }

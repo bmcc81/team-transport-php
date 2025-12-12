@@ -173,4 +173,17 @@ class Geofence
         $stmt = $pdo->prepare("DELETE FROM geofence_vehicle WHERE geofence_id = ?");
         $stmt->execute([$geofenceId]);
     }
+    public static function allActive(): array
+    {
+        $pdo = Database::pdo();
+        $stmt = $pdo->query("
+            SELECT *
+            FROM geofences
+            WHERE is_active = 1
+            ORDER BY name ASC
+        ");
+
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
 }
