@@ -41,11 +41,25 @@ $recentLoads = $pdo->query("
     LIMIT 5
 ")->fetchAll(PDO::FETCH_ASSOC);
 
+/** =====================
+ *  CHART DATA
+ *  ===================== */
 $loadStatusCounts = $pdo->query("
     SELECT status, COUNT(*) AS total
     FROM loads
     GROUP BY status
 ")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+$vehicleStatusCounts = $pdo->query("
+    SELECT status, COUNT(*) AS total
+    FROM vehicles
+    GROUP BY status
+")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+function normalizeLabel(string $status): string
+{
+    return ucwords(str_replace('_', ' ', $status));
+}
 ?>
 
 <div class="container-fluid mt-3">
@@ -59,11 +73,9 @@ $loadStatusCounts = $pdo->query("
         <main class="col-md-9 col-lg-10">
 
             <!-- Page Header -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="h4 mb-0">Dashboard</h2>
-                    <small class="text-muted">Operational overview & alerts</small>
-                </div>
+            <div class="mb-4">
+                <h2 class="h4 mb-0">Dashboard</h2>
+                <small class="text-muted">Operational overview & alerts</small>
             </div>
 
             <!-- ALERT STRIP -->
@@ -110,8 +122,8 @@ $loadStatusCounts = $pdo->query("
                 <div class="col-md-4">
                     <div class="card border-primary shadow-sm h-100">
                         <div class="card-body">
-                            <h6 class="text-primary mb-1">Quick Actions</h6>
-                            <div class="d-grid gap-2 mt-2">
+                            <h6 class="text-primary mb-2">Quick Actions</h6>
+                            <div class="d-grid gap-2">
                                 <a href="/loads/create" class="btn btn-sm btn-primary">
                                     <i class="bi bi-plus-circle"></i> New Load
                                 </a>
@@ -127,7 +139,6 @@ $loadStatusCounts = $pdo->query("
 
             <!-- CORE KPIs -->
             <div class="row g-3 mb-4">
-
                 <?php
                 $stats = [
                     ['Vehicles', $totalVehicles, 'truck', '/admin/vehicles'],
@@ -144,19 +155,16 @@ $loadStatusCounts = $pdo->query("
                                 <i class="bi bi-<?= $icon ?> fs-3 text-muted"></i>
                                 <h6 class="text-muted mt-2"><?= $label ?></h6>
                                 <div class="display-6 fw-bold"><?= $value ?></div>
-                                <a href="<?= $link ?>" class="small text-decoration-none">
-                                    Manage →
-                                </a>
+                                <a href="<?= $link ?>" class="small text-decoration-none">Manage →</a>
                             </div>
                         </div>
                     </div>
                 <?php endforeach; ?>
-
             </div>
 
+            <!-- CHARTS -->
             <div class="row g-3 mb-4">
 
-                <!-- Loads by Status Chart -->
                 <div class="col-md-4">
                     <div class="card shadow-sm h-100">
                         <div class="card-header bg-light fw-semibold">
@@ -172,15 +180,29 @@ $loadStatusCounts = $pdo->query("
                     </div>
                 </div>
 
+                <div class="col-md-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light fw-semibold">
+                            Vehicles by Status
+                        </div>
+                        <div class="card-body d-flex justify-content-center align-items-center">
+                            <?php if ($vehicleStatusCounts): ?>
+                                <canvas id="vehicleStatusChart" style="max-height:180px"></canvas>
+                            <?php else: ?>
+                                <span class="text-muted small">No vehicle data available</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
-            <!-- RECENT ACTIVITY -->
+            <!-- RECENT LOADS -->
             <div class="card shadow-sm mb-5">
                 <div class="card-header bg-light fw-semibold">
                     Recent Loads
                 </div>
                 <div class="card-body p-0">
-
                     <?php if (!$recentLoads): ?>
                         <div class="p-3 text-muted">No recent loads.</div>
                     <?php else: ?>
@@ -207,93 +229,77 @@ $loadStatusCounts = $pdo->query("
                             </tbody>
                         </table>
                     <?php endif; ?>
-
                 </div>
             </div>
 
         </main>
     </div>
 </div>
+
+<!-- Charts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 (() => {
-    const ctx = document.getElementById('loadsStatusChart');
-    if (!ctx) return;
 
-    const data = <?= json_encode(array_values($loadStatusCounts)) ?>;
-    const labels = <?= json_encode(array_map('ucfirst', array_keys($loadStatusCounts))) ?>;
+    function renderDonutChart(canvasId, labels, data, colorMap) {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx || !data.length) return;
 
-    if (!data.length) return;
+        const colors = labels.map(l => colorMap[l] ?? '#adb5bd');
 
-    new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels,
-            datasets: [{
-                data,
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        boxWidth: 12,
-                        font: { size: 11 }
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels,
+                datasets: [{
+                    data,
+                    backgroundColor: colors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            font: { size: 11 }
+                        }
                     }
                 }
             }
+        });
+    }
+
+    // ✅ Loads by Status — MATCHES YOUR DB
+    renderDonutChart(
+        'loadsStatusChart',
+        <?= json_encode(array_map('normalizeLabel', array_keys($loadStatusCounts))) ?>,
+        <?= json_encode(array_values($loadStatusCounts)) ?>,
+        {
+            'Planned': '#0d6efd',      // blue
+            'In Progress': '#ffc107',  // yellow
+            'Completed': '#198754'     // green
         }
-    });
+    );
+
+    // ✅ Vehicles by Status
+    renderDonutChart(
+        'vehicleStatusChart',
+        <?= json_encode(array_map('normalizeLabel', array_keys($vehicleStatusCounts))) ?>,
+        <?= json_encode(array_values($vehicleStatusCounts)) ?>,
+        {
+            'Available': '#198754',      // green
+            'In Service': '#0d6efd',     // blue
+            'Maintenance': '#ffc107',   // yellow
+            'Out Of Service': '#dc3545' // red (if used)
+        }
+    );
+
 })();
 </script>
-<script>
-(() => {
-    const ctx = document.getElementById('loadsStatusChart');
-    if (!ctx) return;
 
-    const data   = <?= json_encode(array_values($loadStatusCounts)) ?>;
-    const labels = <?= json_encode(array_map('ucfirst', array_keys($loadStatusCounts))) ?>;
 
-    if (!data.length) return;
-
-    const statusColors = {
-        Pending:     '#6c757d',
-        Assigned:    '#0d6efd',
-        In_transit:  '#ffc107',
-        Delivered:   '#198754',
-        Cancelled:   '#dc3545'
-    };
-
-    const colors = labels.map(l => statusColors[l] ?? '#adb5bd');
-
-    new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels,
-            datasets: [{
-                data,
-                backgroundColor: colors,
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        boxWidth: 12,
-                        font: { size: 11 }
-                    }
-                }
-            }
-        }
-    });
-})();
-</script>
 <?php require __DIR__ . '/../layout/footer.php'; ?>
