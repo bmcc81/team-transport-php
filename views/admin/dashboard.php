@@ -6,18 +6,22 @@ use App\Database\Database;
 
 $pdo = Database::pdo();
 
-// Fetch stats
-$totalVehicles = $pdo->query("SELECT COUNT(*) FROM vehicles")->fetchColumn();
-$totalDrivers  = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'driver'")->fetchColumn();
-$totalLoads    = $pdo->query("SELECT COUNT(*) FROM loads")->fetchColumn();
-$totalCustomers= $pdo->query("SELECT COUNT(*) FROM customers")->fetchColumn();
+/** =====================
+ *  KPI COUNTS
+ *  ===================== */
+$totalVehicles   = $pdo->query("SELECT COUNT(*) FROM vehicles")->fetchColumn();
+$totalDrivers    = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'driver'")->fetchColumn();
+$totalLoads      = $pdo->query("SELECT COUNT(*) FROM loads")->fetchColumn();
+$totalCustomers  = $pdo->query("SELECT COUNT(*) FROM customers")->fetchColumn();
 
-// Maintenance alerts
-$maintenanceDue = $pdo->query("
-    SELECT COUNT(*) 
+/** =====================
+ *  MAINTENANCE ALERTS
+ *  ===================== */
+$maintenanceOverdue = $pdo->query("
+    SELECT COUNT(*)
     FROM vehicle_maintenance
     WHERE status = 'planned'
-      AND scheduled_date <= CURDATE()
+      AND scheduled_date < CURDATE()
 ")->fetchColumn();
 
 $maintenanceWeek = $pdo->query("
@@ -26,6 +30,22 @@ $maintenanceWeek = $pdo->query("
     WHERE status = 'planned'
       AND scheduled_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
 ")->fetchColumn();
+
+/** =====================
+ *  RECENT LOADS
+ *  ===================== */
+$recentLoads = $pdo->query("
+    SELECT load_number, status, pickup_date
+    FROM loads
+    ORDER BY created_at DESC
+    LIMIT 5
+")->fetchAll(PDO::FETCH_ASSOC);
+
+$loadStatusCounts = $pdo->query("
+    SELECT status, COUNT(*) AS total
+    FROM loads
+    GROUP BY status
+")->fetchAll(PDO::FETCH_KEY_PAIR);
 ?>
 
 <div class="container-fluid mt-3">
@@ -38,121 +58,242 @@ $maintenanceWeek = $pdo->query("
 
         <main class="col-md-9 col-lg-10">
 
-            <h2 class="h4 mb-4">Dashboard</h2>
+            <!-- Page Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h4 mb-0">Dashboard</h2>
+                    <small class="text-muted">Operational overview & alerts</small>
+                </div>
+            </div>
 
-            <!-- Maintenance Alerts -->
-            <div class="row mb-4">
+            <!-- ALERT STRIP -->
+            <div class="row g-3 mb-4">
 
-                <!-- Overdue -->
-                <div class="col-md-3 mb-3">
-                    <div class="card border-danger shadow-sm">
+                <div class="col-md-4">
+                    <div class="card border-danger shadow-sm h-100">
                         <div class="card-body">
-                            <h5 class="card-title">Overdue Maintenance</h5>
-                            <p class="display-6 text-danger fw-bold"><?= $maintenanceDue ?></p>
-                            <a href="/admin/vehicles" class="small text-decoration-none">View Vehicles →</a>
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="text-danger mb-1">Overdue Maintenance</h6>
+                                    <div class="display-6 fw-bold text-danger">
+                                        <?= $maintenanceOverdue ?>
+                                    </div>
+                                </div>
+                                <i class="bi bi-exclamation-triangle fs-1 text-danger opacity-50"></i>
+                            </div>
+                            <a href="/admin/vehicles" class="small text-decoration-none">
+                                Review vehicles →
+                            </a>
                         </div>
                     </div>
                 </div>
 
-                <!-- Due This Week -->
-                <div class="col-md-3 mb-3">
-                    <div class="card border-warning shadow-sm">
+                <div class="col-md-4">
+                    <div class="card border-warning shadow-sm h-100">
                         <div class="card-body">
-                            <h5 class="card-title">Due This Week</h5>
-                            <p class="display-6 text-warning fw-bold"><?= $maintenanceWeek ?></p>
-                            <a href="/admin/vehicles" class="small text-decoration-none">View Vehicles →</a>
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="text-warning mb-1">Maintenance This Week</h6>
+                                    <div class="display-6 fw-bold text-warning">
+                                        <?= $maintenanceWeek ?>
+                                    </div>
+                                </div>
+                                <i class="bi bi-calendar-week fs-1 text-warning opacity-50"></i>
+                            </div>
+                            <a href="/admin/vehicles" class="small text-decoration-none">
+                                View schedule →
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card border-primary shadow-sm h-100">
+                        <div class="card-body">
+                            <h6 class="text-primary mb-1">Quick Actions</h6>
+                            <div class="d-grid gap-2 mt-2">
+                                <a href="/loads/create" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-plus-circle"></i> New Load
+                                </a>
+                                <a href="/admin/vehicles/create" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-truck"></i> Add Vehicle
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
 
             </div>
 
-            <!-- Main Stats -->
-            <div class="row mb-4">
+            <!-- CORE KPIs -->
+            <div class="row g-3 mb-4">
 
-                <div class="col-md-3 mb-3">
-                    <div class="card shadow-sm">
-                        <div class="card-body text-center">
-                            <h6 class="text-muted">Vehicles</h6>
-                            <div class="display-6 fw-bold"><?= $totalVehicles ?></div>
-                            <a href="/admin/vehicles" class="small text-decoration-none">Manage Vehicles</a>
+                <?php
+                $stats = [
+                    ['Vehicles', $totalVehicles, 'truck', '/admin/vehicles'],
+                    ['Drivers', $totalDrivers, 'person-badge', '/admin/drivers'],
+                    ['Loads', $totalLoads, 'box-seam', '/admin/loads'],
+                    ['Customers', $totalCustomers, 'building', '/admin/customers'],
+                ];
+
+                foreach ($stats as [$label, $value, $icon, $link]):
+                ?>
+                    <div class="col-md-3">
+                        <div class="card shadow-sm text-center h-100">
+                            <div class="card-body">
+                                <i class="bi bi-<?= $icon ?> fs-3 text-muted"></i>
+                                <h6 class="text-muted mt-2"><?= $label ?></h6>
+                                <div class="display-6 fw-bold"><?= $value ?></div>
+                                <a href="<?= $link ?>" class="small text-decoration-none">
+                                    Manage →
+                                </a>
+                            </div>
                         </div>
                     </div>
-                </div>
+                <?php endforeach; ?>
 
-                <div class="col-md-3 mb-3">
-                    <div class="card shadow-sm">
-                        <div class="card-body text-center">
-                            <h6 class="text-muted">Drivers</h6>
-                            <div class="display-6 fw-bold"><?= $totalDrivers ?></div>
-                            <a href="/admin/drivers" class="small text-decoration-none">Manage Drivers</a>
+            </div>
+
+            <div class="row g-3 mb-4">
+
+                <!-- Loads by Status Chart -->
+                <div class="col-md-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light fw-semibold">
+                            Loads by Status
                         </div>
-                    </div>
-                </div>
-
-                <div class="col-md-3 mb-3">
-                    <div class="card shadow-sm">
-                        <div class="card-body text-center">
-                            <h6 class="text-muted">Loads</h6>
-                            <div class="display-6 fw-bold"><?= $totalLoads ?></div>
-                            <a href="/admin/loads" class="small text-decoration-none">View Loads</a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-3 mb-3">
-                    <div class="card shadow-sm">
-                        <div class="card-body text-center">
-                            <h6 class="text-muted">Customers</h6>
-                            <div class="display-6 fw-bold"><?= $totalCustomers ?></div>
-                            <a href="/admin/customers" class="small text-decoration-none">Manage Customers</a>
+                        <div class="card-body d-flex justify-content-center align-items-center">
+                            <?php if ($loadStatusCounts): ?>
+                                <canvas id="loadsStatusChart" style="max-height:180px"></canvas>
+                            <?php else: ?>
+                                <span class="text-muted small">No load data available</span>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
 
             </div>
 
-            <!-- Quick Actions Row -->
+            <!-- RECENT ACTIVITY -->
             <div class="card shadow-sm mb-5">
                 <div class="card-header bg-light fw-semibold">
-                    Quick Actions
+                    Recent Loads
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
 
-                    <div class="row g-3">
-
-                        <div class="col-md-3">
-                            <a href="/loads/create" class="btn btn-primary w-100">
-                                <i class="bi bi-plus-circle"></i> New Load
-                            </a>
-                        </div>
-
-                        <div class="col-md-3">
-                            <a href="/admin/vehicles/create" class="btn btn-outline-primary w-100">
-                                <i class="bi bi-truck"></i> Add Vehicle
-                            </a>
-                        </div>
-
-                        <div class="col-md-3">
-                            <a href="/admin/drivers" class="btn btn-outline-primary w-100">
-                                <i class="bi bi-person-badge"></i> View Drivers
-                            </a>
-                        </div>
-
-                        <div class="col-md-3">
-                            <a href="/admin/customers/create" class="btn btn-outline-primary w-100">
-                                <i class="bi bi-building"></i> Add Customer
-                            </a>
-                        </div>
-
-                    </div>
+                    <?php if (!$recentLoads): ?>
+                        <div class="p-3 text-muted">No recent loads.</div>
+                    <?php else: ?>
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Load</th>
+                                    <th>Status</th>
+                                    <th>Pickup Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($recentLoads as $load): ?>
+                                    <tr>
+                                        <td><?= e($load['load_number']) ?></td>
+                                        <td>
+                                            <span class="badge bg-secondary">
+                                                <?= e(ucfirst($load['status'])) ?>
+                                            </span>
+                                        </td>
+                                        <td><?= e($load['pickup_date']) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php endif; ?>
 
                 </div>
             </div>
 
         </main>
-
     </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(() => {
+    const ctx = document.getElementById('loadsStatusChart');
+    if (!ctx) return;
 
+    const data = <?= json_encode(array_values($loadStatusCounts)) ?>;
+    const labels = <?= json_encode(array_map('ucfirst', array_keys($loadStatusCounts))) ?>;
+
+    if (!data.length) return;
+
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{
+                data,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12,
+                        font: { size: 11 }
+                    }
+                }
+            }
+        }
+    });
+})();
+</script>
+<script>
+(() => {
+    const ctx = document.getElementById('loadsStatusChart');
+    if (!ctx) return;
+
+    const data   = <?= json_encode(array_values($loadStatusCounts)) ?>;
+    const labels = <?= json_encode(array_map('ucfirst', array_keys($loadStatusCounts))) ?>;
+
+    if (!data.length) return;
+
+    const statusColors = {
+        Pending:     '#6c757d',
+        Assigned:    '#0d6efd',
+        In_transit:  '#ffc107',
+        Delivered:   '#198754',
+        Cancelled:   '#dc3545'
+    };
+
+    const colors = labels.map(l => statusColors[l] ?? '#adb5bd');
+
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{
+                data,
+                backgroundColor: colors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12,
+                        font: { size: 11 }
+                    }
+                }
+            }
+        }
+    });
+})();
+</script>
 <?php require __DIR__ . '/../layout/footer.php'; ?>
