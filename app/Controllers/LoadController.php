@@ -116,9 +116,51 @@ class LoadController extends Controller
             return;
         }
 
+        $pdo = Database::pdo();
+
+        // Explicit mapping — no ambiguity
         $data = $_POST;
-        Load::update($id, $data);
-        $this->redirect('/loads/view?id=' . $id);
+        $data['driver_id'] = !empty($_POST['driver_id'])
+            ? (int) $_POST['driver_id']
+            : null;
+
+        $pdo->beginTransaction();
+
+        try {
+            // Get current driver
+            $stmt = $pdo->prepare("SELECT driver_id FROM loads WHERE load_id = :id");
+            $stmt->execute(['id' => $id]);
+            $oldDriverId = $stmt->fetchColumn();
+
+            // Update load (THIS must persist driver_id)
+            Load::update($id, $data);
+
+            // Driver state transitions
+            if ($oldDriverId && $oldDriverId != $data['driver_id']) {
+                $pdo->prepare("
+                    UPDATE users
+                    SET status = 'available'
+                    WHERE id = :id
+                ")->execute(['id' => $oldDriverId]);
+            }
+
+            if ($data['driver_id']) {
+                $pdo->prepare("
+                    UPDATE users
+                    SET status = 'assigned'
+                    WHERE id = :id
+                ")->execute(['id' => $data['driver_id']]);
+            }
+
+            $pdo->commit();
+
+            $_SESSION['success'] = 'Load updated successfully.';
+            $this->redirect('/loads/view?id=' . $id);
+
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
     }
 
     public function updateStatus(): void
