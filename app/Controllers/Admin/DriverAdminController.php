@@ -7,13 +7,30 @@ use PDO;
 
 class DriverAdminController extends Controller
 {
-    public function index(): void
+   public function index(): void
     {
         $pdo = Database::pdo();
-        $stmt = $pdo->query("SELECT * FROM users WHERE role = 'driver' ORDER BY full_name ASC");
-        $drivers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $this->view('admin/drivers/index', ['drivers' => $drivers]);
+        $stmt = $pdo->query("
+            SELECT 
+                u.id,
+                u.full_name,
+                u.username,
+                u.email,
+                u.status,
+                v.vehicle_number
+            FROM users u
+            LEFT JOIN vehicles v
+                ON v.assigned_driver_id = u.id
+            WHERE u.role = 'driver'
+            ORDER BY u.full_name ASC
+        ");
+
+        $drivers = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $this->view('admin/drivers/index', [
+            'drivers' => $drivers
+        ]);
     }
 
     public function profile($id): void
@@ -53,5 +70,208 @@ class DriverAdminController extends Controller
             'vehicle' => $vehicle
         ]);
     }
+    
+    public function edit(int $id): void
+    {
+        $pdo = Database::pdo();
+
+        $stmt = $pdo->prepare("
+            SELECT 
+                u.id,
+                u.full_name,
+                u.username,
+                u.email,
+                u.status,
+                u.updated_at,
+                v.id AS vehicle_id,
+                v.vehicle_number
+            FROM users u
+            LEFT JOIN vehicles v 
+                ON v.assigned_driver_id = u.id
+            WHERE u.id = ?
+        ");
+
+        $stmt->execute([$id]);
+        $driver = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        if (!$driver) {
+            http_response_code(404);
+            echo 'Driver not found';
+            return;
+        }
+
+        $this->view('admin/drivers/edit', [
+            'driver' => $driver
+        ]);
+    }
+
+    public function update(int $id): void
+    {
+        $pdo = Database::pdo();
+        $pdo->beginTransaction();
+
+        try {
+            $status = $_POST['status'];
+
+            // Update driver
+            $stmt = $pdo->prepare("
+                UPDATE users
+                SET full_name  = ?,
+                    username   = ?,
+                    email      = ?,
+                    status     = ?,
+                    updated_at = NOW(),
+                    updated_by = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([
+                $_POST['full_name'],
+                $_POST['username'],
+                $_POST['email'],
+                $status,
+                $_SESSION['user']['id'],
+                $id
+            ]);
+
+            // AUTO-UNASSIGN VEHICLE IF DRIVER IS INACTIVE
+            if ($status === 'inactive') {
+                $stmt = $pdo->prepare("
+                    UPDATE vehicles
+                    SET assigned_driver_id = NULL
+                    WHERE assigned_driver_id = ?
+                ");
+                $stmt->execute([$id]);
+            }
+
+            $pdo->commit();
+
+            $_SESSION['success'] = 'Driver updated successfully.';
+            $this->redirect('/admin/drivers');
+
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+    }
+
+    public function assignVehicleForm(int $driverId): void
+    {
+        $pdo = Database::pdo();
+
+        // Fetch driver
+        $stmt = $pdo->prepare("
+            SELECT id, full_name
+            FROM users
+            WHERE id = ? AND role = 'driver'
+        ");
+        $stmt->execute([$driverId]);
+        $driver = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        if (!$driver) {
+            http_response_code(404);
+            echo 'Driver not found';
+            return;
+        }
+
+        // Fetch currently assigned vehicle
+        $stmt = $pdo->prepare("
+            SELECT id
+            FROM vehicles
+            WHERE assigned_driver_id = ?
+        ");
+        $stmt->execute([$driverId]);
+        $currentVehicleId = $stmt->fetchColumn();
+
+        // Fetch vehicles
+        $stmt = $pdo->prepare("
+            SELECT 
+                v.id,
+                v.vehicle_number,
+                v.status,
+                v.maintenance_status,
+                v.assigned_driver_id,
+                u.full_name AS assigned_driver_name
+            FROM vehicles v
+            LEFT JOIN users u ON u.id = v.assigned_driver_id
+            WHERE v.status != 'retired'
+            ORDER BY v.vehicle_number
+        ");
+        $stmt->execute();
+        $vehicles = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $this->view('admin/drivers/assign_vehicle', [
+            'driver'           => $driver,
+            'vehicles'         => $vehicles,
+            'currentVehicleId' => $currentVehicleId
+        ]);
+    }
+
+    public function assignVehicleSave(int $driverId): void
+    {
+        $vehicleId = (int)($_POST['vehicle_id'] ?? 0);
+
+        if ($vehicleId <= 0) {
+            $_SESSION['errors'][] = 'Please select a vehicle.';
+            $this->redirect("/admin/drivers/assign-vehicle/{$driverId}");
+        }
+
+        $pdo = Database::pdo();
+
+        // 🔒 Validate vehicle BEFORE starting transaction
+        $stmt = $pdo->prepare("
+            SELECT status, maintenance_status
+            FROM vehicles
+            WHERE id = ?
+        ");
+        $stmt->execute([$vehicleId]);
+        $vehicle = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        if (!$vehicle) {
+            $_SESSION['errors'][] = 'Selected vehicle does not exist.';
+            $this->redirect("/admin/drivers/assign-vehicle/{$driverId}");
+        }
+
+        if (
+            $vehicle['status'] === 'retired' ||
+            $vehicle['status'] === 'maintenance' ||
+            $vehicle['maintenance_status'] !== 'ok'
+        ) {
+            $_SESSION['errors'][] = 'Vehicle cannot be assigned while under maintenance.';
+            $this->redirect("/admin/drivers/assign-vehicle/{$driverId}");
+        }
+
+        // ✅ Now we can safely mutate state
+        $pdo->beginTransaction();
+
+        try {
+            // Unassign this driver from any vehicle
+            $stmt = $pdo->prepare("
+                UPDATE vehicles
+                SET assigned_driver_id = NULL
+                WHERE assigned_driver_id = ?
+            ");
+            $stmt->execute([$driverId]);
+
+            // Assign new vehicle
+            $stmt = $pdo->prepare("
+                UPDATE vehicles
+                SET assigned_driver_id = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([$driverId, $vehicleId]);
+
+            $pdo->commit();
+
+            $_SESSION['success'] = 'Vehicle assigned successfully.';
+            $this->redirect('/admin/drivers/edit/' . $driverId);
+
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
 
 }

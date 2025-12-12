@@ -111,8 +111,10 @@ $router->post('/admin/customers/delete/{id}','Admin\\CustomerAdminController@del
 | ADMIN: DRIVERS
 |--------------------------------------------------------------------------
 */
-$router->get('/admin/drivers',                  'Admin\\DriverAdminController@index',          ['admin']);
-$router->get('/admin/drivers/view/{id}',        'Admin\\DriverAdminController@profile',        ['admin']);
+$router->get('/admin/drivers',                     'Admin\\DriverAdminController@index',             ['admin']);
+$router->get('/admin/drivers/view/{id}',           'Admin\\DriverAdminController@profile',           ['admin']);
+$router->get('/admin/drivers/edit/{id}',           'Admin\\DriverAdminController@edit',              ['admin']);
+$router->post('/admin/drivers/edit/{id}',          'Admin\\DriverAdminController@update',            ['admin']);
 $router->get('/admin/drivers/assign-vehicle/{id}', 'Admin\\DriverAdminController@assignVehicleForm', ['admin']);
 $router->post('/admin/drivers/assign-vehicle/{id}','Admin\\DriverAdminController@assignVehicleSave', ['admin']);
 
