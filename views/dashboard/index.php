@@ -3,6 +3,8 @@ $pageTitle = 'Dashboard';
 require __DIR__ . '/../layout/header.php';
 $totalVehicles = max(1, (int)($stats['vehicles_total'] ?? 1));
 $availabilityPct = round(($stats['vehicles_available'] ?? 0) / $totalVehicles * 100);
+$totalDrivers = max(1, (int)($stats['drivers_total'] ?? 1));
+$driverAvailabilityPct = round(($stats['drivers_available'] ?? 0) / $totalDrivers * 100);
 ?>
 
 <div class="row g-3">
@@ -29,6 +31,44 @@ $availabilityPct = round(($stats['vehicles_available'] ?? 0) / $totalVehicles * 
             </div>
         </div>
     </div>
+
+    <!-- UNASSIGNED LOADS -->
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100 dashboard-kpi">
+            <div class="card-body d-flex flex-column">
+
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="text-muted text-uppercase small">Unassigned Loads</div>
+                        <div class="fw-bold fs-2">
+                            <?= (int)($stats['unassigned_loads'] ?? 0) ?>
+                        </div>
+                    </div>
+                    <i class="bi bi-exclamation-triangle fs-3 text-danger"></i>
+                </div>
+
+                <?php if (($stats['unassigned_loads'] ?? 0) > 0): ?>
+                    <span class="badge bg-danger w-fit mb-2">
+                        Action required
+                    </span>
+                <?php else: ?>
+                    <span class="badge bg-success w-fit mb-2">
+                        All loads assigned
+                    </span>
+                <?php endif; ?>
+
+                <div class="mt-auto pt-2 border-top">
+                    <a href="/loads?status=pending&unassigned=1"
+                    class="small text-decoration-none fw-semibold">
+                        View unassigned loads
+                        <i class="bi bi-arrow-right-short"></i>
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
 
     <!-- VEHICLES AVAILABLE -->
     <div class="col-12 col-md-6 col-xl-3">

@@ -29,7 +29,21 @@ class DashboardController extends Controller
             'drivers_total'     => 0,
             'drivers_available' => 0,
             'drivers_assigned'  => 0,
+            'unassigned_loads' => 0,
         ];
+
+        /**
+         * ======================
+         * UNASSIGNED LOADS
+         * ======================
+         */
+        $stats['unassigned_loads'] = (int) $pdo->query("
+            SELECT COUNT(*)
+            FROM loads
+            WHERE load_status = 'pending'
+            AND driver_id IS NULL
+        ")->fetchColumn();
+
 
         // --- Loads aggregation
         $loadRows = $pdo->query("
