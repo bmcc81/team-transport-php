@@ -26,6 +26,9 @@ class DashboardController extends Controller
             'vehicles_total'     => 0,
             'vehicles_available' => 0,
             'vehicles_maintenance' => 0,
+            'drivers_total'     => 0,
+            'drivers_available' => 0,
+            'drivers_assigned'  => 0,
         ];
 
         // --- Loads aggregation
@@ -73,6 +76,32 @@ class DashboardController extends Controller
                     break;
                 case 'maintenance':
                     $stats['vehicles_maintenance'] = $cnt;
+                    break;
+            }
+        }
+
+        /**
+         * ======================
+         * DRIVER STATS
+         * ======================
+         */
+        $driverRows = $pdo->query("
+            SELECT status, COUNT(*) AS cnt
+            FROM users
+            WHERE role = 'driver'
+            GROUP BY status
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($driverRows as $row) {
+            $cnt = (int) $row['cnt'];
+            $stats['drivers_total'] += $cnt;
+
+            switch ($row['status']) {
+                case 'available':
+                    $stats['drivers_available'] = $cnt;
+                    break;
+                case 'assigned':
+                    $stats['drivers_assigned'] = $cnt;
                     break;
             }
         }

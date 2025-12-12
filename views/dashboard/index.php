@@ -165,6 +165,37 @@ $availabilityPct = round(($stats['vehicles_available'] ?? 0) / $totalVehicles * 
         </div>
     </div>
 
+    <!-- DRIVERS AVAILABLE -->
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100 dashboard-kpi">
+            <div class="card-body d-flex flex-column">
+
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="text-muted text-uppercase small">Drivers Available</div>
+                        <div class="fw-bold fs-2">
+                            <?= (int)($stats['drivers_available'] ?? 0) ?>
+                        </div>
+                    </div>
+                    <i class="bi bi-person-check fs-3 text-success"></i>
+                </div>
+
+                <span class="badge bg-success w-fit mb-2">
+                    Ready for assignment
+                </span>
+
+                <div class="mt-auto pt-2 border-top">
+                    <a href="/admin/drivers?status=available"
+                    class="small text-decoration-none fw-semibold">
+                        View available drivers
+                        <i class="bi bi-arrow-right-short"></i>
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <?php require __DIR__ . '/../layout/footer.php'; ?>
