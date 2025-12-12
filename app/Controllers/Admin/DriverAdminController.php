@@ -175,19 +175,21 @@ class DriverAdminController extends Controller
 
         // Fetch available vehicles
         $stmt = $pdo->prepare("
-            SELECT 
-                v.id,
-                v.vehicle_number,
-                v.assigned_driver_id,
-                u.full_name AS assigned_driver_name
-            FROM vehicles v
-            LEFT JOIN users u ON u.id = v.assigned_driver_id
-            WHERE v.status != 'retired'
-            ORDER BY v.vehicle_number
-        ");
-        $stmt->execute();
-        $vehicles = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    SELECT 
+        v.id,
+        v.vehicle_number,
+        v.status,
+        v.maintenance_status,
+        v.assigned_driver_id,
+        u.full_name AS assigned_driver_name
+    FROM vehicles v
+    LEFT JOIN users u ON u.id = v.assigned_driver_id
+    WHERE v.status != 'retired'
+    ORDER BY v.vehicle_number
+");
+$stmt->execute();
 
+$vehicles = $stmt->fetchAll(\PDO::FETCH_ASSOC);
         $this->view('admin/drivers/assign_vehicle', [
             'driver'   => $driver,
             'vehicles' => $vehicles
@@ -204,10 +206,35 @@ class DriverAdminController extends Controller
         }
 
         $pdo = Database::pdo();
+
+        // 🔒 Validate vehicle BEFORE starting transaction
+        $stmt = $pdo->prepare("
+            SELECT status, maintenance_status
+            FROM vehicles
+            WHERE id = ?
+        ");
+        $stmt->execute([$vehicleId]);
+        $vehicle = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        if (!$vehicle) {
+            $_SESSION['errors'][] = 'Selected vehicle does not exist.';
+            $this->redirect("/admin/drivers/assign-vehicle/{$driverId}");
+        }
+
+        if (
+            $vehicle['status'] === 'retired' ||
+            $vehicle['status'] === 'maintenance' ||
+            $vehicle['maintenance_status'] !== 'ok'
+        ) {
+            $_SESSION['errors'][] = 'Vehicle cannot be assigned while under maintenance.';
+            $this->redirect("/admin/drivers/assign-vehicle/{$driverId}");
+        }
+
+        // ✅ Now we can safely mutate state
         $pdo->beginTransaction();
 
         try {
-            // Unassign this driver from any vehicle (safety)
+            // Unassign this driver from any vehicle
             $stmt = $pdo->prepare("
                 UPDATE vehicles
                 SET assigned_driver_id = NULL
@@ -229,9 +256,12 @@ class DriverAdminController extends Controller
             $this->redirect('/admin/drivers/edit/' . $driverId);
 
         } catch (\Throwable $e) {
-            $pdo->rollBack();
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             throw $e;
         }
     }
+
 
 }

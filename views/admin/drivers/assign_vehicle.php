@@ -4,7 +4,15 @@
 
 $pageTitle = "Assign Vehicle";
 require __DIR__ . '/../../layout/header.php';
+
+foreach ($vehicles as &$v) {
+    $v['status'] ??= 'unknown';
+    $v['maintenance_status'] ??= 'unknown';
+}
+unset($v);
 ?>
+
+
 
 <div class="container-fluid mt-3">
     <div class="row">
@@ -26,8 +34,20 @@ require __DIR__ . '/../../layout/header.php';
                     <select name="vehicle_id" class="form-select" required>
                         <option value="">— Select vehicle —</option>
                         <?php foreach ($vehicles as $v): ?>
-                            <option value="<?= $v['id'] ?>">
+                            <option value="<?= $v['id'] ?>"
+                                <?= (
+                                    $v['status'] === 'maintenance' ||
+                                    $v['status'] === 'retired' ||
+                                    $v['maintenance_status'] !== 'ok'
+                                ) ? 'disabled' : '' ?>
+                            >
                                 <?= htmlspecialchars($v['vehicle_number']) ?>
+
+                                <?php if ($v['maintenance_status'] !== 'ok'): ?>
+                                    — maintenance
+                                <?php elseif ($v['assigned_driver_id']): ?>
+                                    — assigned to <?= htmlspecialchars($v['assigned_driver_name']) ?>
+                                <?php endif; ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
