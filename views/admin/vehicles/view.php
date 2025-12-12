@@ -109,14 +109,14 @@ if ($yearValue >= $currentYear - 3) {
                 </div>
 
                 <div class="d-flex flex-wrap gap-2">
-                    <a href="/admin/vehicles/<?= e((string)$vehicle->id) ?>/edit"
-                       class="btn btn-outline-secondary btn-sm">
+                    <a href="/admin/vehicles/edit/<?= e((string)$vehicle->id) ?>"
+                    class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-pencil"></i> Edit
                     </a>
 
-                    <form action="/admin/vehicles/<?= e((string)$vehicle->id) ?>/delete"
-                          method="POST"
-                          onsubmit="return confirm('Delete this vehicle?');">
+                    <form action="/admin/vehicles/delete/<?= e((string)$vehicle->id) ?>"
+                        method="POST"
+                        onsubmit="return confirm('Delete this vehicle?');">
                         <button class="btn btn-outline-danger btn-sm">
                             <i class="bi bi-trash"></i> Delete
                         </button>

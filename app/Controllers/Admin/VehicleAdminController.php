@@ -108,38 +108,67 @@ class VehicleAdminController extends Controller
     {
         $pdo = Database::pdo();
 
-        $stmt = $pdo->prepare("
-            UPDATE vehicles
-            SET
-                vehicle_number      = ?,
-                make                = ?,
-                model               = ?,
-                year                = ?,
-                license_plate       = ?,
-                vin                 = ?,
-                capacity            = ?,
-                status              = ?,
-                maintenance_status  = ?,
-                updated_at          = NOW()
-            WHERE id = ?
-        ");
+        // Normalize incoming values
+        $status = $_POST['status'] ?? 'available';
+        $maintenanceStatus = $_POST['maintenance_status'] ?? 'ok';
 
-        $stmt->execute([
-            $_POST['vehicle_number'] ?? null,
-            $_POST['make'] ?? null,
-            $_POST['model'] ?? null,
-            isset($_POST['year']) ? (int)$_POST['year'] : null,
-            $_POST['license_plate'] ?? null,
-            ($_POST['vin'] ?? '') !== '' ? $_POST['vin'] : null,
-            ($_POST['capacity'] ?? '') !== '' ? (int)$_POST['capacity'] : null,
-            $_POST['status'] ?? 'available',
-            $_POST['maintenance_status'] ?? 'ok',
-            (int)$id,
-        ]);
+        // Business rule:
+        // If vehicle enters maintenance, auto-unassign driver
+        $mustUnassign = (
+            $status === 'maintenance' ||
+            $maintenanceStatus !== 'ok'
+        );
 
-        $_SESSION['success'] = "Vehicle updated.";
-        $this->redirect("/admin/vehicles/{$id}");
+        $pdo->beginTransaction();
+
+        try {
+            $stmt = $pdo->prepare("
+                UPDATE vehicles
+                SET
+                    vehicle_number      = ?,
+                    make                = ?,
+                    model               = ?,
+                    year                = ?,
+                    license_plate       = ?,
+                    vin                 = ?,
+                    capacity            = ?,
+                    status              = ?,
+                    maintenance_status  = ?,
+                    assigned_driver_id  = CASE WHEN ? THEN NULL ELSE assigned_driver_id END,
+                    updated_at          = NOW()
+                WHERE id = ?
+            ");
+
+            $stmt->execute([
+                $_POST['vehicle_number'] ?? null,
+                $_POST['make'] ?? null,
+                $_POST['model'] ?? null,
+                isset($_POST['year']) ? (int)$_POST['year'] : null,
+                $_POST['license_plate'] ?? null,
+                ($_POST['vin'] ?? '') !== '' ? $_POST['vin'] : null,
+                ($_POST['capacity'] ?? '') !== '' ? (int)$_POST['capacity'] : null,
+                $status,
+                $maintenanceStatus,
+                $mustUnassign ? 1 : 0,
+                (int)$id,
+            ]);
+
+            $pdo->commit();
+
+            $_SESSION['success'] = $mustUnassign
+                ? 'Vehicle updated. Driver was unassigned due to maintenance.'
+                : 'Vehicle updated.';
+
+            $this->redirect("/admin/vehicles/{$id}");
+
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
     }
+
 
     /**
      * Confirm delete screen.
