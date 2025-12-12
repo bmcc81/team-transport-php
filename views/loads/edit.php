@@ -32,12 +32,12 @@ require __DIR__ . '/../layout/header.php';
 
                     <div class="col-12 col-md-3">
                         <label class="form-label">Assigned Driver</label>
-                        <select name="assigned_driver_id" class="form-select">
+                        <select name="driver_id" class="form-select">
                             <option value="">Unassigned</option>
                             <?php foreach ($drivers as $driver): ?>
                                 <option value="<?= (int)$driver['id'] ?>"
-                                    <?= (int)$driver['id'] === (int)($load['assigned_driver_id'] ?? 0) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($driver['username']) ?>
+                                    <?= (int)$driver['id'] === (int)($load['driver_id'] ?? 0) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($driver['full_name']) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>

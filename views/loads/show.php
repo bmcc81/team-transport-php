@@ -133,7 +133,7 @@ $badgeClass = match ($status) {
                     <ul class="list-group list-group-flush small">
                         <?php foreach ($docs as $doc): ?>
                             <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span class="text-truncate me-2"><?= htmlspecialchars($doc['file_name']) ?></span>
+                                <span class="text-truncate me-2"><?= htmlspecialchars(basename($doc['file_path'] ?? '')) ?></span>
                                 <a href="/uploads/<?= rawurlencode($doc['file_path']) ?>" target="_blank" class="btn btn-sm btn-outline-secondary">
                                     <i class="bi bi-box-arrow-up-right"></i>
                                 </a>
