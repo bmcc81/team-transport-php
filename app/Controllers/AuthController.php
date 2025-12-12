@@ -1,69 +1,62 @@
 <?php
+
 namespace App\Controllers;
 
 use App\Core\Controller;
-use App\Models\User;
+use App\Support\Auth;
 
 class AuthController extends Controller
 {
-    public function loginForm(): void
+    /**
+     * Show the login form (GET /login)
+     */
+    public function showLoginForm(): void
     {
-        if (isset($_SESSION['user_id'])) {
-            $this->redirect('/dashboard');
+        // If already logged in, send them to admin dashboard (adjust route as needed)
+        if (Auth::check()) {
+            $this->redirect('/admin');
         }
 
-        $error = $_SESSION['flash_error'] ?? null;
-        $old   = $_SESSION['flash_old'] ?? [];
+        $errors = $_SESSION['errors'] ?? [];
+        unset($_SESSION['errors']);
 
-        unset($_SESSION['flash_error'], $_SESSION['flash_old']);
-
-        $this->view('auth/login', [
-            'error' => $error,
-            'old'   => $old,
-        ]);
+        $this->view('auth/login', compact('errors'));
     }
 
+    /**
+     * Handle login submission (POST /login)
+     */
     public function login(): void
     {
-        $username = trim($_POST['username'] ?? '');
-        $password = $_POST['password'] ?? '';
+        $identifier = trim($_POST['email'] ?? $_POST['username'] ?? '');
+        $password   = trim($_POST['password'] ?? '');
 
-        $_SESSION['flash_old'] = ['username' => $username];
+        $errors = [];
 
-        if ($username === '' || $password === '') {
-            $_SESSION['flash_error'] = 'Please enter both username and password.';
+        if ($identifier === '' || $password === '') {
+            $errors[] = 'Email/username and password are required.';
+        }
+
+        if (!empty($errors)) {
+            $_SESSION['errors'] = $errors;
             $this->redirect('/login');
         }
 
-        $user = User::findByUsername($username);
-        if (!$user) {
-            $_SESSION['flash_error'] = 'Invalid credentials.';
+        if (!Auth::attempt($identifier, $password)) {
+            $_SESSION['errors'] = ['Invalid credentials.'];
             $this->redirect('/login');
         }
 
-        $valid = false;
-        if (!empty($user['pwd'])) {
-            $valid = password_verify($password, $user['pwd']);
-        } elseif (!empty($user['password'])) {
-            $valid = hash('sha256', $password) === $user['password'];
-        }
-
-        if (!$valid) {
-            $_SESSION['flash_error'] = 'Invalid credentials.';
-            $this->redirect('/login');
-        }
-
-        $_SESSION['user_id'] = (int)$user['id'];
-        $_SESSION['username'] = $user['username'] ?? $user['email'] ?? '';
-        $_SESSION['role'] = $user['role'] ?? 'user';
-
-        $this->redirect('/dashboard');
+        // Successful login → send to admin dashboard
+        $this->redirect('/admin');
     }
 
+    /**
+     * Logout and redirect to login (GET /logout or POST /logout)
+     */
     public function logout(): void
     {
-        session_unset();
-        session_destroy();
+        Auth::logout();
         $this->redirect('/login');
     }
 }

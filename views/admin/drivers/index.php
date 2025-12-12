@@ -20,20 +20,36 @@
                             <th>Name</th>
                             <th>Username</th>
                             <th>Email</th>
-                            <th></th>
+                            <th class="text-end">Actions</th>
                         </tr>
                         </thead>
                         <tbody>
                         <?php foreach ($drivers as $d): ?>
                             <tr>
-                                <td><?= htmlspecialchars($d['full_name']) ?></td>
+                                <td>
+                                    <?= htmlspecialchars($d['full_name']) ?>
+                                    <?php if (!empty($d['vehicle_number'])): ?>
+                                        <span class="badge bg-info ms-2">
+                                            <?= htmlspecialchars($d['vehicle_number']) ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?= htmlspecialchars($d['username']) ?></td>
                                 <td><?= htmlspecialchars($d['email']) ?></td>
-                                <td>
-                                    <a href="/admin/drivers/view/<?= $d['id'] ?>" 
-                                       class="btn btn-sm btn-outline-primary">
-                                       <i class="bi bi-eye"></i>
-                                    </a>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="/admin/drivers/view/<?= $d['id'] ?>"
+                                        class="btn btn-outline-primary"
+                                        title="View driver">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+
+                                        <a href="/admin/drivers/edit/<?= $d['id'] ?>"
+                                        class="btn btn-outline-secondary"
+                                        title="Edit driver">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

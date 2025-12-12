@@ -1,13 +1,26 @@
 <?php
+
 namespace App\Middleware;
 
-class AuthMiddleware
+use App\Support\Auth;
+
+class AuthMiddleware implements MiddlewareInterface
 {
-    public function handle(): void
+    public function handle($request, callable $next)
     {
-        if (!isset($_SESSION['user_id'])) {
-            header('Location: /login');
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+        // Public routes
+        if (in_array($uri, ['/login', '/logout'])) {
+            return $next($request);
+        }
+
+        // If not authenticated → redirect to login
+        if (!Auth::check()) {
+            header("Location: /login");
             exit;
         }
+
+        return $next($request);
     }
 }
