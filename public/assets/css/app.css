@@ -88,4 +88,14 @@ body {
     opacity: 1;
 }
 
-
+/* Dashboard only Home */
+.dashboard-kpi {
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+.dashboard-kpi:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.08);
+}
+.w-fit {
+    width: fit-content;
+}

@@ -28,6 +28,64 @@ require __DIR__ . '/../layout/header.php';
         </div>
     </div>
 
+    <!-- VEHICLES AVAILABLE -->
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100 dashboard-kpi">
+            <div class="card-body d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="text-muted text-uppercase small">Vehicles Available</div>
+                        <div class="fw-bold fs-2">
+                            <?= (int)($stats['vehicles_available'] ?? 0) ?>
+                        </div>
+                    </div>
+                    <i class="bi bi-truck-flatbed fs-3 text-success"></i>
+                </div>
+
+                <span class="badge bg-success w-fit mb-2">
+                    Ready for dispatch
+                </span>
+
+                <div class="mt-auto pt-2 border-top">
+                    <a href="/admin/vehicles?status=available"
+                    class="small text-decoration-none fw-semibold">
+                        View available vehicles
+                        <i class="bi bi-arrow-right-short"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VEHICLES IN MAINTENANCE -->
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100 dashboard-kpi">
+            <div class="card-body d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="text-muted text-uppercase small">In Maintenance</div>
+                        <div class="fw-bold fs-2">
+                            <?= (int)($stats['vehicles_maintenance'] ?? 0) ?>
+                        </div>
+                    </div>
+                    <i class="bi bi-wrench-adjustable fs-3 text-warning"></i>
+                </div>
+
+                <span class="badge bg-warning text-dark w-fit mb-2">
+                    Service required
+                </span>
+
+                <div class="mt-auto pt-2 border-top">
+                    <a href="/admin/vehicles?status=maintenance"
+                    class="small text-decoration-none fw-semibold">
+                        View maintenance queue
+                        <i class="bi bi-arrow-right-short"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- PENDING -->
     <div class="col-12 col-md-6 col-xl-3">
         <div class="card border-0 shadow-sm h-100 dashboard-kpi">
