@@ -1,6 +1,8 @@
 <?php
 $pageTitle = 'Dashboard';
 require __DIR__ . '/../layout/header.php';
+$totalVehicles = max(1, (int)($stats['vehicles_total'] ?? 1));
+$availabilityPct = round(($stats['vehicles_available'] ?? 0) / $totalVehicles * 100);
 ?>
 
 <div class="row g-3">
@@ -32,6 +34,7 @@ require __DIR__ . '/../layout/header.php';
     <div class="col-12 col-md-6 col-xl-3">
         <div class="card border-0 shadow-sm h-100 dashboard-kpi">
             <div class="card-body d-flex flex-column">
+
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <div>
                         <div class="text-muted text-uppercase small">Vehicles Available</div>
@@ -42,8 +45,8 @@ require __DIR__ . '/../layout/header.php';
                     <i class="bi bi-truck-flatbed fs-3 text-success"></i>
                 </div>
 
-                <span class="badge bg-success w-fit mb-2">
-                    Ready for dispatch
+                <span class="badge bg-secondary w-fit mb-2">
+                    <?= $availabilityPct ?>% of fleet available
                 </span>
 
                 <div class="mt-auto pt-2 border-top">
@@ -53,6 +56,7 @@ require __DIR__ . '/../layout/header.php';
                         <i class="bi bi-arrow-right-short"></i>
                     </a>
                 </div>
+
             </div>
         </div>
     </div>
