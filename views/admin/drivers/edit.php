@@ -52,6 +52,12 @@ require __DIR__ . '/../../layout/header.php';
                             <option value="inactive" <?= $driver['status'] === 'inactive' ? 'selected' : '' ?>>Inactive</option>
                         </select>
                     </div>
+
+                    <?php if ($driver['status'] === 'inactive'): ?>
+                        <div class="form-text text-warning">
+                            Inactive drivers are automatically unassigned from vehicles.
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <hr class="my-4">

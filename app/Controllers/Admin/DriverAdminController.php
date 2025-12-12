@@ -108,29 +108,50 @@ class DriverAdminController extends Controller
     public function update(int $id): void
     {
         $pdo = Database::pdo();
+        $pdo->beginTransaction();
 
-        $stmt = $pdo->prepare("
-            UPDATE users
-            SET full_name = ?,
-                username  = ?,
-                email     = ?,
-                status    = ?,
-                updated_at = NOW(),
-                updated_by = ?
-            WHERE id = ?
-        ");
+        try {
+            $status = $_POST['status'];
 
-        $stmt->execute([
-            $_POST['full_name'],
-            $_POST['username'],
-            $_POST['email'],
-            $_POST['status'],
-            $_SESSION['user']['id'],
-            $id
-        ]);
+            // Update driver
+            $stmt = $pdo->prepare("
+                UPDATE users
+                SET full_name  = ?,
+                    username   = ?,
+                    email      = ?,
+                    status     = ?,
+                    updated_at = NOW(),
+                    updated_by = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([
+                $_POST['full_name'],
+                $_POST['username'],
+                $_POST['email'],
+                $status,
+                $_SESSION['user']['id'],
+                $id
+            ]);
 
-        $_SESSION['success'] = 'Driver updated successfully.';
-        $this->redirect('/admin/drivers');
+            // AUTO-UNASSIGN VEHICLE IF DRIVER IS INACTIVE
+            if ($status === 'inactive') {
+                $stmt = $pdo->prepare("
+                    UPDATE vehicles
+                    SET assigned_driver_id = NULL
+                    WHERE assigned_driver_id = ?
+                ");
+                $stmt->execute([$id]);
+            }
+
+            $pdo->commit();
+
+            $_SESSION['success'] = 'Driver updated successfully.';
+            $this->redirect('/admin/drivers');
+
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
     }
 
     public function assignVehicleForm(int $driverId): void
