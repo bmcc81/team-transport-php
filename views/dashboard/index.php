@@ -47,21 +47,16 @@ $driverAvailabilityPct = round(($stats['drivers_available'] ?? 0) / $totalDriver
                     <i class="bi bi-exclamation-triangle fs-3 text-danger"></i>
                 </div>
 
-                <?php if (($stats['unassigned_loads'] ?? 0) > 0): ?>
-                    <span class="badge bg-danger w-fit mb-2">
-                        Action required
-                    </span>
+                <?php if ((int)($stats['unassigned_loads'] ?? 0) > 0): ?>
+                    <span class="badge bg-danger w-fit mb-2">Action required</span>
                 <?php else: ?>
-                    <span class="badge bg-success w-fit mb-2">
-                        All loads assigned
-                    </span>
+                    <span class="badge bg-success w-fit mb-2">All loads assigned</span>
                 <?php endif; ?>
 
                 <div class="mt-auto pt-2 border-top">
-                    <a href="/loads?status=pending&unassigned=1"
+                    <a href="/admin/loads?status=pending&unassigned=1"
                     class="small text-decoration-none fw-semibold">
-                        View unassigned loads
-                        <i class="bi bi-arrow-right-short"></i>
+                        View unassigned loads <i class="bi bi-arrow-right-short"></i>
                     </a>
                 </div>
 
@@ -129,6 +124,36 @@ $driverAvailabilityPct = round(($stats['drivers_available'] ?? 0) / $totalDriver
             </div>
         </div>
     </div>
+
+    <!-- VEHICLES IN SERVICE -->
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100 dashboard-kpi">
+            <div class="card-body d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="text-muted text-uppercase small">In Service</div>
+                        <div class="fw-bold fs-2">
+                            <?= (int)($stats['vehicles_in_service'] ?? 0) ?>
+                        </div>
+                    </div>
+                    <i class="bi bi-truck fs-3 text-info"></i>
+                </div>
+
+                <span class="badge bg-info text-dark w-fit mb-2">
+                    Active on road
+                </span>
+
+                <div class="mt-auto pt-2 border-top">
+                    <a href="/admin/vehicles?status=in_service"
+                    class="small text-decoration-none fw-semibold">
+                        View in-service vehicles
+                        <i class="bi bi-arrow-right-short"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <!-- PENDING -->
     <div class="col-12 col-md-6 col-xl-3">

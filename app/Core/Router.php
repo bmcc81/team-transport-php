@@ -45,7 +45,6 @@ class Router
     {
         $previous = $this->currentGroup;
 
-        // Apply new group prefix & middleware
         $this->currentGroup = [
             'prefix' => $previous['prefix'] . $prefix,
             'middleware' => array_merge($previous['middleware'], $middleware)
@@ -53,7 +52,6 @@ class Router
 
         $callback($this);
 
-        // Restore previous group after callback
         $this->currentGroup = $previous;
     }
 
@@ -94,13 +92,11 @@ class Router
         $static  = $this->routes[$method]['static']  ?? [];
         $dynamic = $this->routes[$method]['dynamic'] ?? [];
 
-        // Static match
         if (isset($static[$uri])) {
             $this->execute($static[$uri]);
             return;
         }
 
-        // Dynamic match
         foreach ($dynamic as $route) {
             $regex = preg_replace('#\{[^/]+\}#', '([^/]+)', $route['pattern']);
             $regex = "#^{$regex}$#";
@@ -121,19 +117,41 @@ class Router
      */
     private function execute(array $route, array $params = []): void
     {
+        
         $kernel = new MiddlewareKernel();
         $middlewareList = $kernel->resolve($route['middleware']);
 
-        // Handler
-        $controllerHandler = function($request) use ($route, $params) {
-            [$controller, $method] = explode('@', $route['handler']);
-            $controllerClass = "App\\Controllers\\" . $controller;
+        $controllerHandler = function ($request) use ($route, $params) {
+            [$controller, $method] = explode('@', $route['handler'], 2);
+
+            // ✅ If already fully-qualified (App\... or \App\...), do NOT prefix again
+            $controller = ltrim($controller, '\\');
+
+            if (str_starts_with($controller, 'App\\')) {
+                $controllerClass = $controller;
+            } else {
+                // ✅ Supports: "DashboardController" and "Admin\\UserController"
+                $controllerClass = "App\\Controllers\\{$controller}";
+            }
+
+            if (!class_exists($controllerClass)) {
+                http_response_code(500);
+                echo "Controller class not found: " . htmlspecialchars($controllerClass);
+                return;
+            }
+
             $instance = new $controllerClass();
 
+            if (!method_exists($instance, $method)) {
+                http_response_code(500);
+                echo "Controller method not found: " . htmlspecialchars($controllerClass . '@' . $method);
+                return;
+            }
+
             call_user_func_array([$instance, $method], $params);
+            
         };
 
-        // Pipeline
         $pipeline = array_reduce(
             array_reverse($middlewareList),
             function ($next, $mwClass) {

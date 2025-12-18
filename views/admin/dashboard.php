@@ -9,22 +9,22 @@ $pdo = Database::pdo();
 /** =====================
  *  KPI COUNTS
  *  ===================== */
-$totalVehicles   = $pdo->query("SELECT COUNT(*) FROM vehicles")->fetchColumn();
-$totalDrivers    = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'driver'")->fetchColumn();
-$totalLoads      = $pdo->query("SELECT COUNT(*) FROM loads")->fetchColumn();
-$totalCustomers  = $pdo->query("SELECT COUNT(*) FROM customers")->fetchColumn();
+$totalVehicles   = (int)$pdo->query("SELECT COUNT(*) FROM vehicles")->fetchColumn();
+$totalDrivers    = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE role = 'driver'")->fetchColumn();
+$totalLoads      = (int)$pdo->query("SELECT COUNT(*) FROM loads")->fetchColumn();
+$totalCustomers  = (int)$pdo->query("SELECT COUNT(*) FROM customers")->fetchColumn();
 
 /** =====================
  *  MAINTENANCE ALERTS
  *  ===================== */
-$maintenanceOverdue = $pdo->query("
+$maintenanceOverdue = (int)$pdo->query("
     SELECT COUNT(*)
     FROM vehicle_maintenance
     WHERE status = 'planned'
       AND scheduled_date < CURDATE()
 ")->fetchColumn();
 
-$maintenanceWeek = $pdo->query("
+$maintenanceWeek = (int)$pdo->query("
     SELECT COUNT(*)
     FROM vehicle_maintenance
     WHERE status = 'planned'
@@ -32,29 +32,40 @@ $maintenanceWeek = $pdo->query("
 ")->fetchColumn();
 
 /** =====================
- *  RECENT LOADS
- *  ===================== */
-$recentLoads = $pdo->query("
-    SELECT load_number, status, pickup_date
-    FROM loads
-    ORDER BY created_at DESC
-    LIMIT 5
-")->fetchAll(PDO::FETCH_ASSOC);
-
-/** =====================
  *  CHART DATA
  *  ===================== */
+
+/**
+ * Loads chart: loads.load_status (NOT status)
+ */
 $loadStatusCounts = $pdo->query("
-    SELECT status, COUNT(*) AS total
+    SELECT load_status, COUNT(*) AS total
     FROM loads
-    GROUP BY status
+    GROUP BY load_status
 ")->fetchAll(PDO::FETCH_KEY_PAIR);
 
+/**
+ * Vehicles chart: vehicles.status exists
+ */
 $vehicleStatusCounts = $pdo->query("
     SELECT status, COUNT(*) AS total
     FROM vehicles
     GROUP BY status
 ")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+/** =====================
+ *  RECENT LOADS
+ *  ===================== */
+$recentLoads = $pdo->query("
+    SELECT
+        load_id,
+        load_number,
+        load_status AS status,
+        pickup_date
+    FROM loads
+    ORDER BY created_at DESC, load_id DESC
+    LIMIT 10
+")->fetchAll(PDO::FETCH_ASSOC);
 
 function normalizeLabel(string $status): string
 {
@@ -153,9 +164,9 @@ function normalizeLabel(string $status): string
                         <div class="card shadow-sm text-center h-100">
                             <div class="card-body">
                                 <i class="bi bi-<?= $icon ?> fs-3 text-muted"></i>
-                                <h6 class="text-muted mt-2"><?= $label ?></h6>
-                                <div class="display-6 fw-bold"><?= $value ?></div>
-                                <a href="<?= $link ?>" class="small text-decoration-none">Manage →</a>
+                                <h6 class="text-muted mt-2"><?= e($label) ?></h6>
+                                <div class="display-6 fw-bold"><?= (int)$value ?></div>
+                                <a href="<?= e($link) ?>" class="small text-decoration-none">Manage →</a>
                             </div>
                         </div>
                     </div>
@@ -170,9 +181,9 @@ function normalizeLabel(string $status): string
                         <div class="card-header bg-light fw-semibold">
                             Loads by Status
                         </div>
-                        <div class="card-body d-flex justify-content-center align-items-center">
-                            <?php if ($loadStatusCounts): ?>
-                                <canvas id="loadsStatusChart" style="max-height:180px"></canvas>
+                        <div class="card-body d-flex justify-content-center align-items-center" style="min-height:220px;">
+                            <?php if (!empty($loadStatusCounts)): ?>
+                                <canvas id="loadsStatusChart" style="max-height:180px; width:100%;"></canvas>
                             <?php else: ?>
                                 <span class="text-muted small">No load data available</span>
                             <?php endif; ?>
@@ -185,9 +196,9 @@ function normalizeLabel(string $status): string
                         <div class="card-header bg-light fw-semibold">
                             Vehicles by Status
                         </div>
-                        <div class="card-body d-flex justify-content-center align-items-center">
-                            <?php if ($vehicleStatusCounts): ?>
-                                <canvas id="vehicleStatusChart" style="max-height:180px"></canvas>
+                        <div class="card-body d-flex justify-content-center align-items-center" style="min-height:220px;">
+                            <?php if (!empty($vehicleStatusCounts)): ?>
+                                <canvas id="vehicleStatusChart" style="max-height:180px; width:100%;"></canvas>
                             <?php else: ?>
                                 <span class="text-muted small">No vehicle data available</span>
                             <?php endif; ?>
@@ -203,7 +214,7 @@ function normalizeLabel(string $status): string
                     Recent Loads
                 </div>
                 <div class="card-body p-0">
-                    <?php if (!$recentLoads): ?>
+                    <?php if (empty($recentLoads)): ?>
                         <div class="p-3 text-muted">No recent loads.</div>
                     <?php else: ?>
                         <table class="table table-sm mb-0">
@@ -217,13 +228,13 @@ function normalizeLabel(string $status): string
                             <tbody>
                                 <?php foreach ($recentLoads as $load): ?>
                                     <tr>
-                                        <td><?= e($load['load_number']) ?></td>
+                                        <td><?= e($load['load_number'] ?? '') ?></td>
                                         <td>
                                             <span class="badge bg-secondary">
-                                                <?= e(ucfirst($load['status'])) ?>
+                                                <?= e(normalizeLabel((string)($load['status'] ?? ''))) ?>
                                             </span>
                                         </td>
-                                        <td><?= e($load['pickup_date']) ?></td>
+                                        <td><?= e((string)($load['pickup_date'] ?? '')) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -273,33 +284,32 @@ function normalizeLabel(string $status): string
         });
     }
 
-    // ✅ Loads by Status — MATCHES YOUR DB
+    // Loads by Status (pending/assigned/in_transit/delivered)
     renderDonutChart(
         'loadsStatusChart',
         <?= json_encode(array_map('normalizeLabel', array_keys($loadStatusCounts))) ?>,
         <?= json_encode(array_values($loadStatusCounts)) ?>,
         {
-            'Planned': '#0d6efd',      // blue
-            'In Progress': '#ffc107',  // yellow
-            'Completed': '#198754'     // green
+            'Pending': '#ffc107',
+            'Assigned': '#0d6efd',
+            'In Transit': '#0dcaf0',
+            'Delivered': '#198754',
         }
     );
 
-    // ✅ Vehicles by Status
+    // Vehicles by Status (available/in_service/maintenance)
     renderDonutChart(
         'vehicleStatusChart',
         <?= json_encode(array_map('normalizeLabel', array_keys($vehicleStatusCounts))) ?>,
         <?= json_encode(array_values($vehicleStatusCounts)) ?>,
         {
-            'Available': '#198754',      // green
-            'In Service': '#0d6efd',     // blue
-            'Maintenance': '#ffc107',   // yellow
-            'Out Of Service': '#dc3545' // red (if used)
+            'Available': '#198754',
+            'In Service': '#0d6efd',
+            'Maintenance': '#ffc107',
         }
     );
 
 })();
 </script>
-
 
 <?php require __DIR__ . '/../layout/footer.php'; ?>

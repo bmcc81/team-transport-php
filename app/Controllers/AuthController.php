@@ -28,6 +28,7 @@ class AuthController extends Controller
      */
     public function login(): void
     {
+        
         $identifier = trim($_POST['email'] ?? $_POST['username'] ?? '');
         $password   = trim($_POST['password'] ?? '');
 
@@ -48,7 +49,7 @@ class AuthController extends Controller
         }
 
         // Successful login → send to admin dashboard
-        $this->redirect('/admin');
+        $this->redirect('/dashboard');
     }
 
     /**

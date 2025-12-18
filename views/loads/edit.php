@@ -33,7 +33,7 @@ require __DIR__ . '/../layout/header.php';
                             <?php foreach ($customers as $customer): ?>
                                 <option value="<?= (int)$customer['id'] ?>"
                                     <?= (int)$customer['id'] === (int)$load['customer_id'] ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($customer['customer_company_name']) ?>
+                                    <?= htmlspecialchars($customer['name']) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -50,13 +50,14 @@ require __DIR__ . '/../layout/header.php';
                     </div>
 
                     <!-- DRIVER -->
+                    <!-- DRIVER -->
                     <div class="col-12 col-md-3">
                         <label class="form-label">Assigned Driver</label>
-                        <select name="driver_id" class="form-select">
+                        <select name="assigned_driver_id" class="form-select">
                             <option value="">Unassigned</option>
                             <?php foreach ($drivers as $driver): ?>
                                 <option value="<?= (int)$driver['id'] ?>"
-                                    <?= (int)$driver['id'] === (int)($load['driver_id'] ?? 0) ? 'selected' : '' ?>>
+                                    <?= (int)$driver['id'] === (int)($load['assigned_driver_id'] ?? 0) ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($driver['full_name']) ?>
                                 </option>
                             <?php endforeach; ?>
