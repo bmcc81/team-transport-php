@@ -5,87 +5,68 @@ namespace App\Support;
 use App\Database\Database;
 use PDO;
 
-class Auth
+final class Auth
 {
-    /**
-     * Check if a user is currently authenticated.
-     */
     public static function check(): bool
     {
-        return isset($_SESSION['user']) && isset($_SESSION['user']['id']);
+        return isset($_SESSION['user']) && is_array($_SESSION['user']);
     }
 
-    /**
-     * Get the current authenticated user array (or null).
-     */
     public static function user(): ?array
     {
-        return $_SESSION['user'] ?? null;
+        return self::check() ? $_SESSION['user'] : null;
     }
 
-    /**
-     * Get the current authenticated user ID, or null.
-     */
-    public static function id(): ?int
-    {
-        return self::check() ? (int)$_SESSION['user']['id'] : null;
-    }
-
-    /**
-     * Attempt to log in using an email or username and password.
-     *
-     * @param string $identifier  Email or username
-     * @param string $password    Plain-text password from form
-     */
     public static function attempt(string $identifier, string $password): bool
     {
         $pdo = Database::pdo();
 
-        // Adjust this query to match your users table
         $stmt = $pdo->prepare("
-            SELECT *
+            SELECT id, username, email, full_name, role, pwd
             FROM users
-            WHERE email = :identifier
-               OR username = :identifier
+            WHERE email = :id OR username = :id
             LIMIT 1
         ");
+        $stmt->execute([':id' => $identifier]);
 
-        $stmt->execute(['identifier' => $identifier]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
         if (!$user) {
             return false;
         }
 
-        // Assuming hashed password is stored in 'pwd' column
         if (!password_verify($password, $user['pwd'])) {
             return false;
         }
 
-        // Optional: if using password_needs_rehash, you can update hash here
+        // Optional: upgrade hash if needed
+        if (password_needs_rehash($user['pwd'], PASSWORD_DEFAULT)) {
+            $newHash = password_hash($password, PASSWORD_DEFAULT);
+            $u = $pdo->prepare("UPDATE users SET pwd = :pwd WHERE id = :id");
+            $u->execute([':pwd' => $newHash, ':id' => (int)$user['id']]);
+        }
 
-        // Successful login → bind minimal user data into session
+        // Store minimal user payload in session
         $_SESSION['user'] = [
             'id'        => (int)$user['id'],
-            'username'  => $user['username'] ?? null,
-            'email'     => $user['email'] ?? null,
-            'full_name' => $user['full_name'] ?? null,
-            'role'      => $user['role'] ?? null,
+            'username'  => $user['username'],
+            'email'     => $user['email'],
+            'full_name' => $user['full_name'],
+            'role'      => $user['role'],
         ];
 
-        // Regenerate session ID to prevent fixation
+        // Hygiene
         session_regenerate_id(true);
 
         return true;
     }
 
-    /**
-     * Log the current user out.
-     */
     public static function logout(): void
     {
         unset($_SESSION['user']);
-        session_regenerate_id(true);
+
+        // Optional: full session wipe
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
     }
 }
-

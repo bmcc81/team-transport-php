@@ -1,0 +1,12 @@
+LOADS:
+
+There are 2 different role based load screens. Role Aware - /loads
+
+Driver: /loads = My assigned loads only (cannot create/edit/dispatch).
+
+Dispatcher: /loads = all loads (simplified UI; can create/edit if you keep those routes).
+
+Authorization: drivers cannot view loads that are not assigned to them.
+
+
+Admin Loads:

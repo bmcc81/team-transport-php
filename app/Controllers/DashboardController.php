@@ -12,40 +12,46 @@ class DashboardController extends Controller
     {
         $pdo = Database::pdo();
 
-        /**
-         * ======================
-         * LOAD STATS
-         * ======================
-         */
         $stats = [
-            'loads_total'        => 0,
-            'loads_pending'      => 0,
-            'loads_transit'      => 0,
-            'loads_delivered'    => 0,
+            // Loads
+            'loads_total'       => 0,
+            'loads_pending'     => 0,
+            'loads_transit'     => 0,
+            'loads_delivered'   => 0,
 
-            'vehicles_total'     => 0,
-            'vehicles_available' => 0,
-            'vehicles_maintenance' => 0,
+            // Vehicles
+            'vehicles_total'        => 0,
+            'vehicles_available'    => 0,
+            'vehicles_in_service'   => 0,
+            'vehicles_maintenance'  => 0,
+
+            // Drivers
             'drivers_total'     => 0,
             'drivers_available' => 0,
             'drivers_assigned'  => 0,
-            'unassigned_loads' => 0,
+
+            // Other
+            'unassigned_loads'  => 0,
         ];
 
         /**
          * ======================
          * UNASSIGNED LOADS
          * ======================
+         * Pending + no assigned driver
          */
         $stats['unassigned_loads'] = (int) $pdo->query("
             SELECT COUNT(*)
             FROM loads
             WHERE load_status = 'pending'
-            AND driver_id IS NULL
+              AND assigned_driver_id IS NULL
         ")->fetchColumn();
 
-
-        // --- Loads aggregation
+        /**
+         * ======================
+         * LOAD STATUS COUNTS
+         * ======================
+         */
         $loadRows = $pdo->query("
             SELECT load_status, COUNT(*) AS cnt
             FROM loads
@@ -60,19 +66,26 @@ class DashboardController extends Controller
                 case 'pending':
                     $stats['loads_pending'] = $cnt;
                     break;
+
                 case 'in_transit':
                     $stats['loads_transit'] = $cnt;
                     break;
+
                 case 'delivered':
                     $stats['loads_delivered'] = $cnt;
+                    break;
+
+                // Other statuses (like 'assigned') are counted in loads_total only
+                default:
                     break;
             }
         }
 
         /**
          * ======================
-         * VEHICLE STATS
+         * VEHICLE STATUS COUNTS
          * ======================
+         * vehicles.status: ('available','in_service','maintenance')
          */
         $vehicleRows = $pdo->query("
             SELECT status, COUNT(*) AS cnt
@@ -88,37 +101,41 @@ class DashboardController extends Controller
                 case 'available':
                     $stats['vehicles_available'] = $cnt;
                     break;
+
+                case 'in_service':
+                    $stats['vehicles_in_service'] = $cnt;
+                    break;
+
                 case 'maintenance':
                     $stats['vehicles_maintenance'] = $cnt;
+                    break;
+
+                default:
                     break;
             }
         }
 
         /**
          * ======================
-         * DRIVER STATS
+         * DRIVER STATS (DERIVED)
          * ======================
+         * users table has NO status column, so derive "assigned" from loads.
          */
-        $driverRows = $pdo->query("
-            SELECT status, COUNT(*) AS cnt
+        $stats['drivers_total'] = (int) $pdo->query("
+            SELECT COUNT(*)
             FROM users
             WHERE role = 'driver'
-            GROUP BY status
-        ")->fetchAll(PDO::FETCH_ASSOC);
+        ")->fetchColumn();
 
-        foreach ($driverRows as $row) {
-            $cnt = (int) $row['cnt'];
-            $stats['drivers_total'] += $cnt;
+        // Distinct drivers currently tied to active work
+        $stats['drivers_assigned'] = (int) $pdo->query("
+            SELECT COUNT(DISTINCT assigned_driver_id)
+            FROM loads
+            WHERE assigned_driver_id IS NOT NULL
+              AND load_status IN ('assigned','in_transit')
+        ")->fetchColumn();
 
-            switch ($row['status']) {
-                case 'available':
-                    $stats['drivers_available'] = $cnt;
-                    break;
-                case 'assigned':
-                    $stats['drivers_assigned'] = $cnt;
-                    break;
-            }
-        }
+        $stats['drivers_available'] = max(0, $stats['drivers_total'] - $stats['drivers_assigned']);
 
         $this->view('dashboard/index', compact('stats'));
     }

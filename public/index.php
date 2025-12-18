@@ -55,32 +55,35 @@ Database::init([
 ]);
 
 $router = new Router();
-// $auth = AuthMiddleware::class;
 
 /*
 |--------------------------------------------------------------------------
 | PUBLIC ROUTES
 |--------------------------------------------------------------------------
 */
-$router->get('/login',  'AuthController@showLoginForm');
-$router->post('/login', 'AuthController@login');
-$router->get('/logout', 'AuthController@logout');
+$router->get('/login',  'App\Controllers\AuthController@showLoginForm');
+$router->post('/login', 'App\Controllers\AuthController@login');
+$router->get('/logout', 'App\Controllers\AuthController@logout');
+
+$router->get('/dev/rebuild', 'App\Controllers\Admin\SchemaController@rebuild');
+
 
 /*
 |--------------------------------------------------------------------------
 | AUTHENTICATED ROUTES
 |--------------------------------------------------------------------------
 */
-$router->get('/',          'DashboardController@index', ['auth']);
-$router->get('/dashboard', 'DashboardController@index', ['auth']);
-$router->get('/profile',   'ProfileController@index',  ['auth']);
+$router->get('/',          'App\Controllers\DashboardController@index', ['auth']);
+$router->get('/dashboard', 'App\Controllers\DashboardController@index', ['auth']);
+$router->get('/profile',   'App\Controllers\ProfileController@index',  ['auth']);
+
 
 /*
 |--------------------------------------------------------------------------
 | ADMIN DASHBOARD
 |--------------------------------------------------------------------------
 */
-$router->get('/admin', 'Admin\\AdminDashboardController@index', ['auth']);
+$router->get('/admin', 'App\Controllers\Admin\AdminDashboardController@index', ['auth']);
 
 /*
 |--------------------------------------------------------------------------
@@ -120,13 +123,13 @@ $router->post('/admin/drivers/assign-vehicle/{id}','Admin\\DriverAdminController
 
 /*
 |--------------------------------------------------------------------------
-| TELEMETRY (REAL-TIME MAP MUST BE FIRST)
+| TELEMETRY
 |--------------------------------------------------------------------------
 */
-$router->get('/admin/vehicles/map', 'Api\\TelemetryController@liveMap', ['auth']);
-$router->get('/api/telemetry/latest', 'Api\\TelemetryController@latest');
-$router->get('/api/telemetry/history/{id}', 'Api\\TelemetryController@history');
-$router->post('/api/telemetry/ingest', 'Api\\TelemetryController@ingest');
+$router->get('/admin/vehicles/map',        'App\Controllers\Api\TelemetryController@liveMap', ['auth']);
+$router->get('/api/telemetry/latest',      'App\Controllers\Api\TelemetryController@latest');
+$router->get('/api/telemetry/history/{id}','App\Controllers\Api\TelemetryController@history');
+$router->post('/api/telemetry/ingest',     'App\Controllers\Api\TelemetryController@ingest');
 
 
 /*
@@ -185,35 +188,19 @@ $router->post('/admin/geofences/delete/{id}', 'Admin\\GeofenceController@delete'
 // Alerts history
 $router->get('/admin/geofences/alerts', 'Admin\\GeofenceController@alerts', ['auth']);
 
-
 /*
 |--------------------------------------------------------------------------
-| ADMIN: LOADS (REST URLs)
+| ADMIN LOAD CONTROLLER
 |--------------------------------------------------------------------------
 */
-
-// List
-$router->get('/admin/loads', 'Admin\\LoadAdminController@index', ['auth']);
-
-// Create
-$router->get('/admin/loads/create', 'Admin\\LoadAdminController@create', ['auth']);
-$router->post('/admin/loads',        'Admin\\LoadAdminController@store',  ['auth']);
-
-// View (REST)
-$router->get('/admin/loads/{id}', 'Admin\\LoadAdminController@show', ['auth']);
-
-// Edit (REST)
-$router->get('/admin/loads/{id}/edit',   'Admin\\LoadAdminController@edit',   ['auth']);
-$router->post('/admin/loads/{id}/edit',  'Admin\\LoadAdminController@update', ['auth']);
-
-// Delete (REST)
-$router->post('/admin/loads/{id}/delete', 'Admin\\LoadAdminController@delete', ['auth']);
-
-// Calendar
-$router->get('/admin/loads/calendar',          'Admin\\LoadAdminController@calendar', ['auth']);
-$router->get('/admin/loads/calendar/events',   'Admin\\LoadAdminController@calendarEvents', ['auth']);
-$router->get('/admin/loads/calendar/create',   'Admin\\LoadAdminController@calendarCreate', ['auth']);
-$router->post('/admin/loads/calendar/update',  'Admin\\LoadAdminController@calendarUpdate', ['auth']);
+// 
+$router->get('/admin/loads', 'Admin\\LoadAdminController@index', ['admin']);
+$router->get('/admin/loads/create', 'Admin\\LoadAdminController@create', ['admin']);
+$router->post('/admin/loads', 'Admin\\LoadAdminController@store', ['admin']);
+$router->get('/admin/loads/{id}', 'Admin\\LoadAdminController@show', ['admin']);
+$router->get('/admin/loads/{id}/edit', 'Admin\\LoadAdminController@edit', ['admin']);
+$router->post('/admin/loads/{id}/edit', 'Admin\\LoadAdminController@update', ['admin']);
+$router->post('/admin/loads/{id}/delete', 'Admin\\LoadAdminController@delete', ['admin']);
 
 /*
 |--------------------------------------------------------------------------
@@ -227,13 +214,14 @@ $router->get('/admin/settings', 'Admin\\SettingsAdminController@index', ['auth']
 | LOAD CONTROLLER (NON-ADMIN)
 |--------------------------------------------------------------------------
 */
-$router->get('/loads',          'LoadController@index',        ['auth']);
-$router->get('/loads/view',     'LoadController@show',         ['auth']);
-$router->get('/loads/create',   'LoadController@create',       ['auth']);
-$router->post('/loads',         'LoadController@store',        ['auth']);
-$router->get('/loads/edit',     'LoadController@edit',         ['auth']);
-$router->post('/loads/update',  'LoadController@update',       ['auth']);
-$router->post('/loads/status',  'LoadController@updateStatus', ['auth']);
-$router->post('/loads/bulk',    'LoadController@bulkActions',  ['auth']);
+$router->get('/loads',         'LoadController@index',  ['auth']);
+$router->get('/loads/view',    'LoadController@show',   ['auth']);
+$router->get('/loads/create',  'LoadController@create', ['auth']);
+$router->post('/loads',        'LoadController@store',  ['auth']);
+$router->get('/loads/edit',    'LoadController@edit',   ['auth']);
+$router->post('/loads/update', 'LoadController@update', ['auth']);
+
+$router->get('/loads/document',  'LoadController@documentForm',     ['auth']);
+$router->post('/loads/document', 'LoadController@generateDocument', ['auth']);
 
 $router->dispatch($_SERVER['REQUEST_URI'], $_SERVER['REQUEST_METHOD']);

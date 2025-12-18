@@ -1,3 +1,21 @@
+<?php
+// views/layout/footer.php
+?>
+<?php
+// If header.php opened the admin wrapper (<section ...>), close it here.
+$role       = $_SESSION['user']['role'] ?? null;
+$currentUri = $_SERVER['REQUEST_URI'] ?? '/';
+$path       = parse_url($currentUri, PHP_URL_PATH) ?: '/';
+
+$isAdminRoute = str_starts_with($path, '/admin');
+$isAdminRole  = in_array((string)$role, ['admin', 'dispatcher'], true);
+$showAdminUi  = !empty($_SESSION['user']['username']) && $isAdminRoute && $isAdminRole;
+
+if ($showAdminUi) {
+    echo "</section></div>";
+}
+?>
+
 </main>
 
 <footer class="mt-auto py-3 border-top bg-white">

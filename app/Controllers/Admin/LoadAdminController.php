@@ -9,29 +9,85 @@ use PDO;
 class LoadAdminController extends Controller
 {
     /**
-     * Map load_status → status (both enums).
-     * load_status: pending, assigned, in_transit, delivered, cancelled
-     * status:     planned, in_progress, completed, cancelled
-     */
-    private function mapLoadStatusToStatus(string $loadStatus): string
-    {
-        return match ($loadStatus) {
-            'in_transit' => 'in_progress',
-            'delivered'  => 'completed',
-            'cancelled'  => 'cancelled',
-            'assigned'   => 'planned',
-            default      => 'planned', // pending or anything else
-        };
-    }
-
-    /**
      * Resolve current user id from session (fallback 1 for safety).
      */
     private function currentUserId(): int
     {
-        return (int)($_SESSION['user']['id']
-            ?? $_SESSION['user_id']
-            ?? 1);
+        return (int)($_SESSION['user']['id'] ?? $_SESSION['user_id'] ?? 1);
+    }
+
+    /**
+     * Get load id from argument or GET (?id=).
+     */
+    private function resolveId(?int $id = null): int
+    {
+        if ($id && $id > 0) return $id;
+        $qid = (int)($_GET['id'] ?? 0);
+        return $qid > 0 ? $qid : 0;
+    }
+
+    /**
+     * Normalize vehicle ids coming from form.
+     * Supports:
+     *  - vehicle_id (single)
+     *  - vehicle_ids[] (multi)
+     */
+    private function normalizeVehicleIds(array $post): array
+    {
+        if (!empty($post['vehicle_ids']) && is_array($post['vehicle_ids'])) {
+            $ids = array_map('intval', $post['vehicle_ids']);
+            $ids = array_values(array_unique(array_filter($ids, fn($v) => $v > 0)));
+            return $ids;
+        }
+
+        $single = (int)($post['vehicle_id'] ?? 0);
+        return $single > 0 ? [$single] : [];
+    }
+
+    /**
+     * Pivot sync: make active assigned vehicles match exactly $vehicleIds.
+     * Keeps history via unassigned_at.
+     */
+    private function syncLoadVehicles(PDO $pdo, int $loadId, array $vehicleIds, ?int $byUserId): void
+    {
+        // Current active assignments
+        $stmt = $pdo->prepare("
+            SELECT vehicle_id
+            FROM load_vehicles
+            WHERE load_id = ?
+              AND unassigned_at IS NULL
+        ");
+        $stmt->execute([$loadId]);
+        $current = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
+
+        $want = array_values(array_unique(array_filter(array_map('intval', $vehicleIds), fn($v) => $v > 0)));
+
+        $toAdd = array_diff($want, $current);
+        $toRemove = array_diff($current, $want);
+
+        if (!empty($toRemove)) {
+            $in = implode(',', array_fill(0, count($toRemove), '?'));
+            $params = array_merge([$loadId], array_values($toRemove));
+
+            $sql = "
+                UPDATE load_vehicles
+                SET unassigned_at = NOW()
+                WHERE load_id = ?
+                  AND unassigned_at IS NULL
+                  AND vehicle_id IN ($in)
+            ";
+            $pdo->prepare($sql)->execute($params);
+        }
+
+        if (!empty($toAdd)) {
+            $ins = $pdo->prepare("
+                INSERT INTO load_vehicles (load_id, vehicle_id, assigned_by_user_id)
+                VALUES (?, ?, ?)
+            ");
+            foreach ($toAdd as $vid) {
+                $ins->execute([$loadId, (int)$vid, $byUserId]);
+            }
+        }
     }
 
     /**
@@ -42,34 +98,106 @@ class LoadAdminController extends Controller
     {
         $pdo = Database::pdo();
 
-        $stmt = $pdo->query("
+        $status     = trim($_GET['status'] ?? '');
+        $search     = trim($_GET['search'] ?? '');
+        $unassigned = !empty($_GET['unassigned']) ? 1 : 0;
+
+        $page     = max(1, (int)($_GET['page'] ?? 1));
+        $perPage  = max(10, (int)($_GET['per_page'] ?? 20));
+        $offset   = ($page - 1) * $perPage;
+
+        $where = [];
+        $params = [];
+
+        if ($status !== '') {
+            $where[] = "l.load_status = :status";
+            $params[':status'] = $status;
+        }
+
+        if ($unassigned) {
+            $where[] = "l.load_status = 'pending' AND l.assigned_driver_id IS NULL";
+        }
+
+        if ($search !== '') {
+            $where[] = "(
+                l.load_number LIKE :q
+                OR l.reference_number LIKE :q
+                OR l.pickup_city LIKE :q
+                OR l.delivery_city LIKE :q
+                OR c.name LIKE :q
+            )";
+            $params[':q'] = '%' . $search . '%';
+        }
+
+        $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+
+        // Count for pagination
+        $countSql = "
+            SELECT COUNT(*)
+            FROM loads l
+            INNER JOIN customers c ON c.id = l.customer_id
+            $whereSql
+        ";
+        $countStmt = $pdo->prepare($countSql);
+        $countStmt->execute($params);
+        $totalRows = (int)$countStmt->fetchColumn();
+        $totalPages = max(1, (int)ceil($totalRows / $perPage));
+
+        // Data query (Option B: vehicle via pivot)
+        $sql = "
             SELECT
                 l.load_id,
                 l.load_number,
+                l.reference_number,
                 l.customer_id,
                 l.assigned_driver_id,
-                l.vehicle_id,
                 l.pickup_city,
                 l.delivery_city,
                 l.pickup_date,
                 l.delivery_date,
                 l.load_status,
+                l.created_at,
 
-                c.customer_company_name,
+                c.name AS customer_company_name,
                 d.full_name AS driver_name,
-                v.vehicle_number
 
+                GROUP_CONCAT(DISTINCT v.vehicle_number ORDER BY v.vehicle_number SEPARATOR ', ') AS vehicle_numbers
             FROM loads l
-            INNER JOIN customers c ON l.customer_id = c.id
-            LEFT JOIN users d      ON l.assigned_driver_id = d.id
-            LEFT JOIN vehicles v   ON l.vehicle_id = v.id
-            WHERE l.deleted_at IS NULL
-            ORDER BY l.created_at DESC
-        ");
+            INNER JOIN customers c ON c.id = l.customer_id
+            LEFT JOIN users d ON d.id = l.assigned_driver_id
 
-        $loads = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            LEFT JOIN load_vehicles lv
+                ON lv.load_id = l.load_id
+               AND lv.unassigned_at IS NULL
+            LEFT JOIN vehicles v ON v.id = lv.vehicle_id
 
-        $this->view('admin/loads/index', compact('loads'));
+            $whereSql
+            GROUP BY l.load_id
+            ORDER BY l.created_at DESC, l.load_id DESC
+            LIMIT :limit OFFSET :offset
+        ";
+
+        $stmt = $pdo->prepare($sql);
+
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+
+        $stmt->execute();
+        $loads = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $this->view('admin/loads/index', [
+            'loads'       => $loads,
+            'status'      => $status,
+            'search'      => $search,
+            'unassigned'  => $unassigned,
+            'page'        => $page,
+            'perPage'     => $perPage,
+            'totalPages'  => $totalPages,
+            'totalRows'   => $totalRows,
+        ]);
     }
 
     /**
@@ -81,184 +209,219 @@ class LoadAdminController extends Controller
         $pdo = Database::pdo();
 
         $customers = $pdo->query("
-            SELECT id, customer_company_name
+            SELECT id, name AS customer_company_name
             FROM customers
-            ORDER BY customer_company_name
-        ")->fetchAll(PDO::FETCH_ASSOC);
+            ORDER BY name
+        ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         $drivers = $pdo->query("
             SELECT id, full_name
             FROM users
             WHERE role = 'driver'
             ORDER BY full_name
-        ")->fetchAll(PDO::FETCH_ASSOC);
+        ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         $vehicles = $pdo->query("
-            SELECT id, vehicle_number
+            SELECT id, vehicle_number, license_plate, status
             FROM vehicles
             ORDER BY vehicle_number
-        ")->fetchAll(PDO::FETCH_ASSOC);
+        ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         $errors = [];
-        $load   = null; // no existing data for create
+        $load = null;
 
         $this->view('admin/loads/create', compact('customers', 'drivers', 'vehicles', 'errors', 'load'));
     }
 
     /**
      * Store a new load.
-     * POST /admin/loads/create
+     * POST /admin/loads/store   (adjust route as needed)
      */
     public function store(): void
     {
         $pdo = Database::pdo();
-
         $userId = $this->currentUserId();
 
-        // Basic required validation
         $errors = [];
 
-        $customerId = $_POST['customer_id'] ?? null;
-        $pickupAddress = trim($_POST['pickup_address'] ?? '');
-        $pickupCity = trim($_POST['pickup_city'] ?? '');
-        $pickupDate = trim($_POST['pickup_date'] ?? '');
+        $customerId      = (int)($_POST['customer_id'] ?? 0);
+        $assignedDriver  = (int)($_POST['assigned_driver_id'] ?? 0) ?: null;
+
+        $referenceNumber = trim($_POST['reference_number'] ?? '');
+        $pickupAddress   = trim($_POST['pickup_address'] ?? '');
+        $pickupCity      = trim($_POST['pickup_city'] ?? '');
+        $pickupDate      = trim($_POST['pickup_date'] ?? '');
+
         $deliveryAddress = trim($_POST['delivery_address'] ?? '');
-        $deliveryCity = trim($_POST['delivery_city'] ?? '');
-        $deliveryDate = trim($_POST['delivery_date'] ?? '');
+        $deliveryCity    = trim($_POST['delivery_city'] ?? '');
+        $deliveryDate    = trim($_POST['delivery_date'] ?? '');
 
-        if (!$customerId)           $errors[] = "Customer is required.";
-        if ($pickupAddress === '')  $errors[] = "Pickup address is required.";
-        if ($pickupCity === '')     $errors[] = "Pickup city is required.";
-        if ($pickupDate === '')     $errors[] = "Pickup date is required.";
-        if ($deliveryAddress === '')$errors[] = "Delivery address is required.";
-        if ($deliveryCity === '')   $errors[] = "Delivery city is required.";
-        if ($deliveryDate === '')   $errors[] = "Delivery date is required.";
+        if ($customerId <= 0)            $errors[] = "Customer is required.";
+        if ($referenceNumber === '')     $errors[] = "Reference # is required.";
+        if ($pickupAddress === '')       $errors[] = "Pickup address is required.";
+        if ($pickupCity === '')          $errors[] = "Pickup city is required.";
+        if ($pickupDate === '')          $errors[] = "Pickup date is required.";
+        if ($deliveryAddress === '')     $errors[] = "Delivery address is required.";
+        if ($deliveryCity === '')        $errors[] = "Delivery city is required.";
+        if ($deliveryDate === '')        $errors[] = "Delivery date is required.";
 
-        // Status handling
         $validLoadStatuses = ['pending','assigned','in_transit','delivered','cancelled'];
         $loadStatus = $_POST['load_status'] ?? 'pending';
-        if (!in_array($loadStatus, $validLoadStatuses, true)) {
-            $loadStatus = 'pending';
-        }
-        $status = $this->mapLoadStatusToStatus($loadStatus);
+        if (!in_array($loadStatus, $validLoadStatuses, true)) $loadStatus = 'pending';
 
         if (!empty($errors)) {
-            // Re-display form with old data
-            $pdo = Database::pdo();
-
+            // Re-display form with lists and old input
             $customers = $pdo->query("
-                SELECT id, customer_company_name
+                SELECT id, name AS customer_company_name
                 FROM customers
-                ORDER BY customer_company_name
-            ")->fetchAll(PDO::FETCH_ASSOC);
+                ORDER BY name
+            ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
             $drivers = $pdo->query("
                 SELECT id, full_name
                 FROM users
                 WHERE role = 'driver'
                 ORDER BY full_name
-            ")->fetchAll(PDO::FETCH_ASSOC);
+            ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
             $vehicles = $pdo->query("
-                SELECT id, vehicle_number
+                SELECT id, vehicle_number, license_plate, status
                 FROM vehicles
                 ORDER BY vehicle_number
-            ")->fetchAll(PDO::FETCH_ASSOC);
+            ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-            // In create mode, we can pass $_POST as $load-like array for convenience
             $load = $_POST;
-
             $this->view('admin/loads/create', compact('customers', 'drivers', 'vehicles', 'errors', 'load'));
             return;
         }
 
-        $stmt = $pdo->prepare("
-            INSERT INTO loads (
-                load_number,
-                customer_id,
-                created_by_user_id,
-                assigned_driver_id,
-                vehicle_id,
-                scheduled_start,
-                scheduled_end,
-                status,
-                reference,
-                reference_number,
-                description,
-                pickup_contact_name,
-                pickup_address,
-                pickup_city,
-                pickup_postal_code,
-                pickup_date,
-                delivery_contact_name,
-                delivery_address,
-                delivery_city,
-                delivery_postal_code,
-                delivery_date,
-                total_weight_kg,
-                rate_amount,
-                rate_currency,
-                load_status,
-                notes,
-                updated_by_user_id
-            ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-            )
-        ");
+        $vehicleIds = $this->normalizeVehicleIds($_POST);
 
-        $stmt->execute([
-            $_POST['load_number']      ?: null,
-            $customerId,
-            $userId,
-            $_POST['assigned_driver_id'] ?: null,
-            $_POST['vehicle_id'] ?? null,
-            $_POST['scheduled_start'] ?: null,
-            $_POST['scheduled_end']   ?: null,
-            $status,
-            $_POST['reference']        ?: null,
-            $_POST['reference_number'] ?: '',
-            $_POST['description']      ?: null,
-            $_POST['pickup_contact_name'] ?: null,
-            $pickupAddress,
-            $pickupCity,
-            $_POST['pickup_postal_code'] ?: null,
-            $pickupDate,
-            $_POST['delivery_contact_name'] ?: null,
-            $deliveryAddress,
-            $deliveryCity,
-            $_POST['delivery_postal_code'] ?: null,
-            $deliveryDate,
-            $_POST['total_weight_kg'] !== '' ? $_POST['total_weight_kg'] : null,
-            $_POST['rate_amount']     !== '' ? $_POST['rate_amount'] : null,
-            $_POST['rate_currency']   ?: 'CAD',
-            $loadStatus,
-            $_POST['notes']           ?: null,
-            $userId,
-        ]);
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO loads (
+                    load_number,
+                    customer_id,
+                    created_by_user_id,
+                    assigned_driver_id,
+                    reference_number,
+                    description,
+                    pickup_contact_name,
+                    pickup_address,
+                    pickup_city,
+                    pickup_postal_code,
+                    pickup_date,
+                    delivery_contact_name,
+                    delivery_address,
+                    delivery_city,
+                    delivery_postal_code,
+                    delivery_date,
+                    total_weight_kg,
+                    rate_amount,
+                    rate_currency,
+                    load_status,
+                    notes
+                ) VALUES (
+                    :load_number,
+                    :customer_id,
+                    :created_by_user_id,
+                    :assigned_driver_id,
+                    :reference_number,
+                    :description,
+                    :pickup_contact_name,
+                    :pickup_address,
+                    :pickup_city,
+                    :pickup_postal_code,
+                    :pickup_date,
+                    :delivery_contact_name,
+                    :delivery_address,
+                    :delivery_city,
+                    :delivery_postal_code,
+                    :delivery_date,
+                    :total_weight_kg,
+                    :rate_amount,
+                    :rate_currency,
+                    :load_status,
+                    :notes
+                )
+            ");
 
-        $_SESSION['success'] = "Load created successfully.";
-        $this->redirect('/admin/loads');
+            $stmt->execute([
+                ':load_number'         => ($_POST['load_number'] ?? '') !== '' ? trim($_POST['load_number']) : null,
+                ':customer_id'         => $customerId,
+                ':created_by_user_id'  => $userId,
+                ':assigned_driver_id'  => $assignedDriver,
+                ':reference_number'    => $referenceNumber,
+                ':description'         => ($_POST['description'] ?? '') !== '' ? trim($_POST['description']) : null,
+
+                ':pickup_contact_name' => ($_POST['pickup_contact_name'] ?? '') !== '' ? trim($_POST['pickup_contact_name']) : null,
+                ':pickup_address'      => $pickupAddress,
+                ':pickup_city'         => $pickupCity,
+                ':pickup_postal_code'  => ($_POST['pickup_postal_code'] ?? '') !== '' ? trim($_POST['pickup_postal_code']) : null,
+                ':pickup_date'         => $pickupDate,
+
+                ':delivery_contact_name' => ($_POST['delivery_contact_name'] ?? '') !== '' ? trim($_POST['delivery_contact_name']) : null,
+                ':delivery_address'      => $deliveryAddress,
+                ':delivery_city'         => $deliveryCity,
+                ':delivery_postal_code'  => ($_POST['delivery_postal_code'] ?? '') !== '' ? trim($_POST['delivery_postal_code']) : null,
+                ':delivery_date'         => $deliveryDate,
+
+                ':total_weight_kg'     => ($_POST['total_weight_kg'] ?? '') !== '' ? (float)$_POST['total_weight_kg'] : null,
+                ':rate_amount'         => ($_POST['rate_amount'] ?? '') !== '' ? (float)$_POST['rate_amount'] : null,
+                ':rate_currency'       => ($_POST['rate_currency'] ?? '') !== '' ? trim($_POST['rate_currency']) : 'CAD',
+                ':load_status'         => $loadStatus,
+                ':notes'               => ($_POST['notes'] ?? '') !== '' ? trim($_POST['notes']) : null,
+            ]);
+
+            $loadId = (int)$pdo->lastInsertId();
+
+            // Option B: pivot vehicles
+            if (!empty($vehicleIds)) {
+                $this->syncLoadVehicles($pdo, $loadId, $vehicleIds, $userId);
+            }
+
+            $pdo->commit();
+
+            $_SESSION['success'] = "Load created successfully.";
+            $this->redirect('/admin/loads');
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
     }
 
     /**
      * Show a single load.
-     * GET /admin/loads/{id}
+     * GET /admin/loads/view?id=123  (or route param)
      */
-    public function show(int $id): void
+    public function show(?int $id = null): void
     {
+        $id = $this->resolveId($id);
+        if ($id <= 0) {
+            http_response_code(404);
+            echo "Load not found.";
+            return;
+        }
+
         $pdo = Database::pdo();
 
         $stmt = $pdo->prepare("
             SELECT
                 l.*,
-                c.customer_company_name,
-                d.full_name      AS driver_name,
-                v.vehicle_number AS vehicle_number
+                c.name AS customer_company_name,
+                d.full_name AS driver_name,
+                GROUP_CONCAT(DISTINCT v.vehicle_number ORDER BY v.vehicle_number SEPARATOR ', ') AS vehicle_numbers
             FROM loads l
-            INNER JOIN customers c ON l.customer_id = c.id
-            LEFT JOIN users d      ON l.assigned_driver_id = d.id
-            LEFT JOIN vehicles v   ON l.vehicle_id = v.id
-            WHERE l.load_id = ? AND l.deleted_at IS NULL
+            INNER JOIN customers c ON c.id = l.customer_id
+            LEFT JOIN users d ON d.id = l.assigned_driver_id
+            LEFT JOIN load_vehicles lv
+                ON lv.load_id = l.load_id
+               AND lv.unassigned_at IS NULL
+            LEFT JOIN vehicles v ON v.id = lv.vehicle_id
+            WHERE l.load_id = ?
+            GROUP BY l.load_id
+            LIMIT 1
         ");
         $stmt->execute([$id]);
         $load = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -274,13 +437,20 @@ class LoadAdminController extends Controller
 
     /**
      * Edit form.
-     * GET /admin/loads/{id}/edit
+     * GET /admin/loads/edit?id=123  (or route param)
      */
-    public function edit(int $id): void
+    public function edit(?int $id = null): void
     {
+        $id = $this->resolveId($id);
+        if ($id <= 0) {
+            http_response_code(404);
+            echo "Load not found.";
+            return;
+        }
+
         $pdo = Database::pdo();
 
-        $stmt = $pdo->prepare("SELECT * FROM loads WHERE load_id = ? AND deleted_at IS NULL");
+        $stmt = $pdo->prepare("SELECT * FROM loads WHERE load_id = ?");
         $stmt->execute([$id]);
         $load = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -291,176 +461,293 @@ class LoadAdminController extends Controller
         }
 
         $customers = $pdo->query("
-            SELECT id, customer_company_name
+            SELECT id, name AS customer_company_name
             FROM customers
-            ORDER BY customer_company_name
-        ")->fetchAll(PDO::FETCH_ASSOC);
+            ORDER BY name
+        ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         $drivers = $pdo->query("
             SELECT id, full_name
             FROM users
             WHERE role = 'driver'
             ORDER BY full_name
-        ")->fetchAll(PDO::FETCH_ASSOC);
+        ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         $vehicles = $pdo->query("
-            SELECT id, vehicle_number
+            SELECT id, vehicle_number, license_plate, status
             FROM vehicles
             ORDER BY vehicle_number
-        ")->fetchAll(PDO::FETCH_ASSOC);
+        ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $activeVehiclesStmt = $pdo->prepare("
+            SELECT
+                lv.vehicle_id,
+                v.vehicle_number,
+                v.license_plate,
+                v.status,
+                lv.assigned_at
+            FROM load_vehicles lv
+            INNER JOIN vehicles v ON v.id = lv.vehicle_id
+            WHERE lv.load_id = ?
+              AND lv.unassigned_at IS NULL
+            ORDER BY lv.assigned_at DESC
+        ");
+        $activeVehiclesStmt->execute([$id]);
+        $activeVehicles = $activeVehiclesStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $selectedVehicleIds = array_map('intval', array_column($activeVehicles, 'vehicle_id'));
 
         $errors = [];
 
-        $this->view('admin/loads/edit', compact('load', 'customers', 'drivers', 'vehicles', 'errors'));
+        $this->view('admin/loads/edit', compact(
+            'load',
+            'customers',
+            'drivers',
+            'vehicles',
+            'activeVehicles',
+            'selectedVehicleIds',
+            'errors'
+        ));
     }
 
     /**
      * Update an existing load.
-     * POST /admin/loads/{id}/edit
+     * POST /admin/loads/update  (or route param)
      */
-    public function update(int $id): void
+    public function update(?int $id = null): void
     {
-        $pdo = Database::pdo();
+        $id = $this->resolveId($id);
+        if ($id <= 0) {
+            http_response_code(404);
+            echo "Load not found.";
+            return;
+        }
 
+        $pdo = Database::pdo();
         $userId = $this->currentUserId();
 
-        // Re-validate important fields
         $errors = [];
 
-        $customerId = $_POST['customer_id'] ?? null;
-        $pickupAddress = trim($_POST['pickup_address'] ?? '');
-        $pickupCity = trim($_POST['pickup_city'] ?? '');
-        $pickupDate = trim($_POST['pickup_date'] ?? '');
+        $customerId      = (int)($_POST['customer_id'] ?? 0);
+        $assignedDriver  = (int)($_POST['assigned_driver_id'] ?? 0) ?: null;
+
+        $referenceNumber = trim($_POST['reference_number'] ?? '');
+        $pickupAddress   = trim($_POST['pickup_address'] ?? '');
+        $pickupCity      = trim($_POST['pickup_city'] ?? '');
+        $pickupDate      = trim($_POST['pickup_date'] ?? '');
+
         $deliveryAddress = trim($_POST['delivery_address'] ?? '');
-        $deliveryCity = trim($_POST['delivery_city'] ?? '');
-        $deliveryDate = trim($_POST['delivery_date'] ?? '');
+        $deliveryCity    = trim($_POST['delivery_city'] ?? '');
+        $deliveryDate    = trim($_POST['delivery_date'] ?? '');
 
-        if (!$customerId)           $errors[] = "Customer is required.";
-        if ($pickupAddress === '')  $errors[] = "Pickup address is required.";
-        if ($pickupCity === '')     $errors[] = "Pickup city is required.";
-        if ($pickupDate === '')     $errors[] = "Pickup date is required.";
-        if ($deliveryAddress === '')$errors[] = "Delivery address is required.";
-        if ($deliveryCity === '')   $errors[] = "Delivery city is required.";
-        if ($deliveryDate === '')   $errors[] = "Delivery date is required.";
+        if ($customerId <= 0)            $errors[] = "Customer is required.";
+        if ($referenceNumber === '')     $errors[] = "Reference # is required.";
+        if ($pickupAddress === '')       $errors[] = "Pickup address is required.";
+        if ($pickupCity === '')          $errors[] = "Pickup city is required.";
+        if ($pickupDate === '')          $errors[] = "Pickup date is required.";
+        if ($deliveryAddress === '')     $errors[] = "Delivery address is required.";
+        if ($deliveryCity === '')        $errors[] = "Delivery city is required.";
+        if ($deliveryDate === '')        $errors[] = "Delivery date is required.";
 
-        // Status handling
         $validLoadStatuses = ['pending','assigned','in_transit','delivered','cancelled'];
         $loadStatus = $_POST['load_status'] ?? 'pending';
-        if (!in_array($loadStatus, $validLoadStatuses, true)) {
-            $loadStatus = 'pending';
-        }
-        $status = $this->mapLoadStatusToStatus($loadStatus);
+        if (!in_array($loadStatus, $validLoadStatuses, true)) $loadStatus = 'pending';
+
+        $vehicleIds = $this->normalizeVehicleIds($_POST);
 
         if (!empty($errors)) {
-            // Re-fetch select lists
+            // Re-render edit with lists and posted data
             $customers = $pdo->query("
-                SELECT id, customer_company_name
+                SELECT id, name AS customer_company_name
                 FROM customers
-                ORDER BY customer_company_name
-            ")->fetchAll(PDO::FETCH_ASSOC);
+                ORDER BY name
+            ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
             $drivers = $pdo->query("
                 SELECT id, full_name
                 FROM users
                 WHERE role = 'driver'
                 ORDER BY full_name
-            ")->fetchAll(PDO::FETCH_ASSOC);
+            ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
             $vehicles = $pdo->query("
-                SELECT id, vehicle_number
+                SELECT id, vehicle_number, license_plate, status
                 FROM vehicles
                 ORDER BY vehicle_number
-            ")->fetchAll(PDO::FETCH_ASSOC);
+            ")->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
             $load = $_POST;
             $load['load_id'] = $id;
 
-            $this->view('admin/loads/edit', compact('load', 'customers', 'drivers', 'vehicles', 'errors'));
+            // For the edit view helpers
+            $activeVehicles = [];
+            $selectedVehicleIds = $vehicleIds;
+
+            $this->view('admin/loads/edit', compact(
+                'load',
+                'customers',
+                'drivers',
+                'vehicles',
+                'activeVehicles',
+                'selectedVehicleIds',
+                'errors'
+            ));
             return;
         }
 
-        $stmt = $pdo->prepare("
-            UPDATE loads
-            SET
-                customer_id           = ?,
-                assigned_driver_id    = ?,
-                vehicle_id            = ?,
-                scheduled_start       = ?,
-                scheduled_end         = ?,
-                status                = ?,
-                reference             = ?,
-                reference_number      = ?,
-                description           = ?,
-                pickup_contact_name   = ?,
-                pickup_address        = ?,
-                pickup_city           = ?,
-                pickup_postal_code    = ?,
-                pickup_date           = ?,
-                delivery_contact_name = ?,
-                delivery_address      = ?,
-                delivery_city         = ?,
-                delivery_postal_code  = ?,
-                delivery_date         = ?,
-                total_weight_kg       = ?,
-                rate_amount           = ?,
-                rate_currency         = ?,
-                load_status           = ?,
-                notes                 = ?,
-                updated_by_user_id    = ?
-            WHERE load_id = ?
-        ");
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare("
+                UPDATE loads
+                SET
+                    load_number           = :load_number,
+                    customer_id           = :customer_id,
+                    assigned_driver_id    = :assigned_driver_id,
+                    reference_number      = :reference_number,
+                    description           = :description,
+                    pickup_contact_name   = :pickup_contact_name,
+                    pickup_address        = :pickup_address,
+                    pickup_city           = :pickup_city,
+                    pickup_postal_code    = :pickup_postal_code,
+                    pickup_date           = :pickup_date,
+                    delivery_contact_name = :delivery_contact_name,
+                    delivery_address      = :delivery_address,
+                    delivery_city         = :delivery_city,
+                    delivery_postal_code  = :delivery_postal_code,
+                    delivery_date         = :delivery_date,
+                    total_weight_kg       = :total_weight_kg,
+                    rate_amount           = :rate_amount,
+                    rate_currency         = :rate_currency,
+                    load_status           = :load_status,
+                    notes                 = :notes
+                WHERE load_id = :id
+            ");
 
-        $stmt->execute([
-            $customerId,
-            $_POST['assigned_driver_id'] ?: null,
-            $_POST['vehicle_id'] ?? null,
-            $_POST['scheduled_start'] ?: null,
-            $_POST['scheduled_end']   ?: null,
-            $status,
-            $_POST['reference']        ?: null,
-            $_POST['reference_number'] ?: '',
-            $_POST['description']      ?: null,
-            $_POST['pickup_contact_name'] ?: null,
-            $pickupAddress,
-            $pickupCity,
-            $_POST['pickup_postal_code'] ?: null,
-            $pickupDate,
-            $_POST['delivery_contact_name'] ?: null,
-            $deliveryAddress,
-            $deliveryCity,
-            $_POST['delivery_postal_code'] ?: null,
-            $deliveryDate,
-            $_POST['total_weight_kg'] !== '' ? $_POST['total_weight_kg'] : null,
-            $_POST['rate_amount']     !== '' ? $_POST['rate_amount'] : null,
-            $_POST['rate_currency']   ?: 'CAD',
-            $loadStatus,
-            $_POST['notes']           ?: null,
-            $userId,
-            $id,
-        ]);
+            $stmt->execute([
+                ':load_number'           => ($_POST['load_number'] ?? '') !== '' ? trim($_POST['load_number']) : null,
+                ':customer_id'           => $customerId,
+                ':assigned_driver_id'    => $assignedDriver,
+                ':reference_number'      => $referenceNumber,
+                ':description'           => ($_POST['description'] ?? '') !== '' ? trim($_POST['description']) : null,
 
-        $_SESSION['success'] = "Load updated.";
-        $this->redirect("/admin/loads/$id");
+                ':pickup_contact_name'   => ($_POST['pickup_contact_name'] ?? '') !== '' ? trim($_POST['pickup_contact_name']) : null,
+                ':pickup_address'        => $pickupAddress,
+                ':pickup_city'           => $pickupCity,
+                ':pickup_postal_code'    => ($_POST['pickup_postal_code'] ?? '') !== '' ? trim($_POST['pickup_postal_code']) : null,
+                ':pickup_date'           => $pickupDate,
+
+                ':delivery_contact_name' => ($_POST['delivery_contact_name'] ?? '') !== '' ? trim($_POST['delivery_contact_name']) : null,
+                ':delivery_address'      => $deliveryAddress,
+                ':delivery_city'         => $deliveryCity,
+                ':delivery_postal_code'  => ($_POST['delivery_postal_code'] ?? '') !== '' ? trim($_POST['delivery_postal_code']) : null,
+                ':delivery_date'         => $deliveryDate,
+
+                ':total_weight_kg'       => ($_POST['total_weight_kg'] ?? '') !== '' ? (float)$_POST['total_weight_kg'] : null,
+                ':rate_amount'           => ($_POST['rate_amount'] ?? '') !== '' ? (float)$_POST['rate_amount'] : null,
+                ':rate_currency'         => ($_POST['rate_currency'] ?? '') !== '' ? trim($_POST['rate_currency']) : 'CAD',
+                ':load_status'           => $loadStatus,
+                ':notes'                 => ($_POST['notes'] ?? '') !== '' ? trim($_POST['notes']) : null,
+                ':id'                    => $id,
+            ]);
+
+            // Option B: pivot vehicles (sync active assignments)
+            $this->syncLoadVehicles($pdo, $id, $vehicleIds, $userId);
+
+            $pdo->commit();
+
+            $_SESSION['success'] = "Load updated.";
+            $this->redirect('/admin/loads/view?id=' . $id);
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
     }
 
     /**
-     * Soft-delete load.
-     * POST /admin/loads/{id}/delete
+     * Delete load (hard delete; your loads table has no deleted_at).
+     * POST /admin/loads/delete?id=123  (or route param)
      */
-    public function delete(int $id): void
+    public function delete(?int $id = null): void
     {
-        $pdo = Database::pdo();
-        $userId = $this->currentUserId();
+        $id = $this->resolveId($id);
+        if ($id <= 0) {
+            http_response_code(404);
+            echo "Load not found.";
+            return;
+        }
 
-        $stmt = $pdo->prepare("
-            UPDATE loads
-            SET deleted_at = NOW(),
-                deleted_by_user_id = ?
-            WHERE load_id = ?
-        ");
-        $stmt->execute([$userId, $id]);
+        $pdo = Database::pdo();
+
+        // FK on load_vehicles should cascade if you created it as recommended.
+        $stmt = $pdo->prepare("DELETE FROM loads WHERE load_id = ?");
+        $stmt->execute([$id]);
 
         $_SESSION['success'] = "Load deleted.";
         $this->redirect('/admin/loads');
+    }
+
+    /**
+     * Assign a vehicle (adds an active row in load_vehicles).
+     * POST /admin/loads/assign-vehicle
+     */
+    public function assignVehicle(): void
+    {
+        $loadId    = (int)($_POST['load_id'] ?? 0);
+        $vehicleId = (int)($_POST['vehicle_id'] ?? 0);
+
+        if ($loadId <= 0 || $vehicleId <= 0) {
+            $this->back();
+            return;
+        }
+
+        $pdo = Database::pdo();
+        $userId = $this->currentUserId();
+
+        // Avoid duplicate active assignment
+        $chk = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM load_vehicles
+            WHERE load_id = ?
+              AND vehicle_id = ?
+              AND unassigned_at IS NULL
+        ");
+        $chk->execute([$loadId, $vehicleId]);
+        if ((int)$chk->fetchColumn() === 0) {
+            $ins = $pdo->prepare("
+                INSERT INTO load_vehicles (load_id, vehicle_id, assigned_by_user_id)
+                VALUES (?, ?, ?)
+            ");
+            $ins->execute([$loadId, $vehicleId, $userId]);
+        }
+
+        $_SESSION['success'] = 'Vehicle assigned.';
+        $this->redirect('/admin/loads/edit?id=' . $loadId);
+    }
+
+    /**
+     * Unassign a vehicle (closes active row in load_vehicles).
+     * POST /admin/loads/unassign-vehicle
+     */
+    public function unassignVehicle(): void
+    {
+        $loadId    = (int)($_POST['load_id'] ?? 0);
+        $vehicleId = (int)($_POST['vehicle_id'] ?? 0);
+
+        if ($loadId <= 0 || $vehicleId <= 0) {
+            $this->back();
+            return;
+        }
+
+        $pdo = Database::pdo();
+        $stmt = $pdo->prepare("
+            UPDATE load_vehicles
+            SET unassigned_at = NOW()
+            WHERE load_id = ?
+              AND vehicle_id = ?
+              AND unassigned_at IS NULL
+        ");
+        $stmt->execute([$loadId, $vehicleId]);
+
+        $_SESSION['success'] = 'Vehicle unassigned.';
+        $this->redirect('/admin/loads/edit?id=' . $loadId);
     }
 }
