@@ -6,8 +6,8 @@ $pageTitle = "Assign Vehicle";
 require __DIR__ . '/../../layout/header.php';
 
 foreach ($vehicles as &$v) {
-    $v['status'] ??= 'unknown';
-    $v['maintenance_status'] ??= 'unknown';
+    $v['status'] ??= 'available';
+    $v['maintenance_status'] ??= 'ok'; // IMPORTANT: don't default to 'unknown' if your rule expects 'ok'
 }
 unset($v);
 ?>
@@ -37,10 +37,10 @@ unset($v);
                             <option value="<?= $v['id'] ?>"
                                 <?= ($currentVehicleId == $v['id']) ? 'selected' : '' ?>
                                 <?= (
-                                    $v['status'] === 'maintenance' ||
-                                    $v['status'] === 'retired' ||
-                                    $v['maintenance_status'] !== 'ok'
-                                ) ? 'disabled' : '' ?>
+                                        $v['status'] === 'maintenance' ||
+                                        $v['maintenance_status'] !== 'ok' ||
+                                        (!empty($v['assigned_driver_id']) && (int)$v['assigned_driver_id'] !== (int)$driver['id'])
+                                    ) ? 'disabled' : '' ?>
                             >
                                 <?= htmlspecialchars($v['vehicle_number']) ?>
 

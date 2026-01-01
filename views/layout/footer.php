@@ -1,7 +1,6 @@
 <?php
 // views/layout/footer.php
-?>
-<?php
+
 // If header.php opened the admin wrapper (<section ...>), close it here.
 $role       = $_SESSION['user']['role'] ?? null;
 $currentUri = $_SERVER['REQUEST_URI'] ?? '/';
@@ -33,5 +32,7 @@ if ($showAdminUi) {
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/assets/js/app.js"></script>
+
+<?php if (!empty($pageScripts)) echo $pageScripts; ?>
 </body>
 </html>

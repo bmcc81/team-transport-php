@@ -111,7 +111,7 @@ class User
     {
         $pdo = Database::pdo();
         $stmt = $pdo->prepare("
-            SELECT l.*, c.customer_company_name
+            SELECT l.*, c.name AS customer_company_name
             FROM loads l
             LEFT JOIN customers c ON c.id = l.customer_id
             WHERE l.assigned_driver_id = ?

@@ -1,0 +1,4 @@
+    .table .btn,
+    .table .btn-group .btn {
+        opacity: 1 !important;
+    }

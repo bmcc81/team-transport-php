@@ -1,11 +1,21 @@
 <?php
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Database\Database;
 use PDO;
 
-class LoadActivityLogger
+final class LoadActivityLogger
 {
+    /**
+     * Write a single activity record for a load.
+     *
+     * @param int         $loadId      loads.load_id
+     * @param string      $action      short action key (e.g., "created", "updated", "assigned_driver")
+     * @param string|null $description optional human-readable details
+     * @param int|null    $userId      users.id of the actor (nullable)
+     */
     public static function log(int $loadId, string $action, ?string $description = null, ?int $userId = null): void
     {
         $pdo = Database::pdo();
@@ -16,88 +26,29 @@ class LoadActivityLogger
         ");
 
         $stmt->execute([
-            'load_id'    => $loadId,
-            'action'     => $action,
-            'description'=> $description,
-            'user_id'    => $userId,
+            ':load_id'     => $loadId,
+            ':action'      => $action,
+            ':description' => $description,
+            ':user_id'     => $userId,
         ]);
     }
 
-    public function show(int $id): void
+    /**
+     * Convenience helper: auto-detect user id from session if available.
+     * Uses either $_SESSION['user']['id'] (your common pattern) or $_SESSION['user_id'].
+     */
+    public static function logWithSessionUser(int $loadId, string $action, ?string $description = null): void
     {
-        $pdo = Database::pdo();
+        $userId = null;
 
-        $stmt = $pdo->prepare("
-            SELECT l.*,
-                c.customer_company_name,
-                u.full_name AS driver_name,
-                v.vehicle_number
-            FROM loads l
-            LEFT JOIN customers c ON c.id = l.customer_id
-            LEFT JOIN users u ON u.id = l.assigned_driver_id
-            LEFT JOIN vehicles v ON v.id = l.vehicle_id
-            WHERE l.load_id = :id
-            AND l.deleted_at IS NULL
-        ");
-        $stmt->execute(['id' => $id]);
-        $load = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$load) {
-            http_response_code(404);
-            echo "Load not found";
-            return;
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            if (!empty($_SESSION['user']['id'])) {
+                $userId = (int)$_SESSION['user']['id'];
+            } elseif (!empty($_SESSION['user_id'])) {
+                $userId = (int)$_SESSION['user_id'];
+            }
         }
 
-        $stmtStops = $pdo->prepare("
-            SELECT *
-            FROM load_stops
-            WHERE load_id = :id
-            ORDER BY sequence ASC
-        ");
-        $stmtStops->execute(['id' => $id]);
-        $stops = $stmtStops->fetchAll(PDO::FETCH_ASSOC);
-
-        $stmtLog = $pdo->prepare("
-            SELECT l.*, u.full_name AS user_name
-            FROM load_activity_log l
-            LEFT JOIN users u ON u.id = l.performed_by_user_id
-            WHERE l.load_id = :id
-            ORDER BY l.created_at DESC
-            LIMIT 100
-        ");
-        $stmtLog->execute(['id' => $id]);
-        $activities = $stmtLog->fetchAll(PDO::FETCH_ASSOC);
-
-        $this->view('admin/loads/show', compact('load', 'stops', 'activities'));
+        self::log($loadId, $action, $description, $userId);
     }
-
-    public function calendar(): void
-    {
-        $pdo = Database::pdo();
-
-        // Next 14 days
-        $stmt = $pdo->query("
-            SELECT l.load_id, l.load_number, l.scheduled_start, l.scheduled_end,
-                l.status,
-                c.customer_company_name,
-                u.full_name AS driver_name,
-                v.vehicle_number
-            FROM loads l
-            LEFT JOIN customers c ON c.id = l.customer_id
-            LEFT JOIN users u ON u.id = l.assigned_driver_id
-            LEFT JOIN vehicles v ON v.id = l.vehicle_id
-            WHERE l.deleted_at IS NULL
-            AND l.scheduled_start IS NOT NULL
-            AND l.scheduled_end IS NOT NULL
-            AND l.scheduled_end >= NOW() - INTERVAL 1 DAY
-            AND l.scheduled_start <= NOW() + INTERVAL 14 DAY
-            ORDER BY l.scheduled_start ASC
-        ");
-
-        $loads = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $this->view('admin/loads/calendar', compact('loads'));
-    }
-
-
 }

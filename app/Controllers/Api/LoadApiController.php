@@ -21,7 +21,7 @@ class LoadApiController extends Controller
 
         $stmt = $pdo->query("
             SELECT l.load_id, l.load_number,
-                   l.customer_id, c.customer_company_name,
+                   l.customer_id, c.name AS customer_company_name,
                    l.assigned_driver_id, u.full_name AS driver_name,
                    l.vehicle_id, v.vehicle_number,
                    l.scheduled_start, l.scheduled_end,
@@ -45,7 +45,7 @@ class LoadApiController extends Controller
 
         $stmt = $pdo->prepare("
             SELECT l.*,
-                   c.customer_company_name,
+                   c.name AS customer_company_name,
                    u.full_name AS driver_name,
                    v.vehicle_number
             FROM loads l
@@ -85,7 +85,7 @@ class LoadApiController extends Controller
 
         $stmt = $pdo->prepare("
             SELECT l.load_id, l.load_number,
-                   l.customer_id, c.customer_company_name,
+                   l.customer_id, c.name AS customer_company_name,
                    l.scheduled_start, l.scheduled_end,
                    l.status, l.reference,
                    v.vehicle_number
@@ -109,7 +109,7 @@ class LoadApiController extends Controller
 
         $stmt = $pdo->prepare("
             SELECT l.load_id, l.load_number,
-                   l.customer_id, c.customer_company_name,
+                   l.customer_id, c.name AS customer_company_name,
                    l.scheduled_start, l.scheduled_end,
                    l.status, l.reference,
                    u.full_name AS driver_name

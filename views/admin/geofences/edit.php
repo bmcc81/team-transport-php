@@ -1,193 +1,400 @@
 <?php
+/**
+ * @var array $geofence
+ * @var array $vehicles
+ * @var array $assignedVehicles
+ */
+
 $pageTitle = "Edit Geofence";
 require __DIR__ . "/../../layout/header.php";
+
+$geofenceId = (int)($geofence['id'] ?? 0);
+$gName      = (string)($geofence['name'] ?? '');
+$gType      = (string)($geofence['type'] ?? 'polygon');
+$gGeojson   = (string)($geofence['geojson'] ?? '');
+$isActive   = (int)($geofence['is_active'] ?? 1);
+
+// Prefer generated column, else read from geojson properties if needed
+$gDesc = (string)($geofence['geo_description'] ?? '');
+
+// Vehicle assignment rules: if no rows in geofence_vehicle => applies to all
+$assignedVehiclesInt = array_values(array_unique(array_map('intval', (array)($assignedVehicles ?? []))));
+$appliesAll = empty($assignedVehiclesInt);
+
+// Derive legacy fields from GeoJSON for convenience
+$centerLat = $centerLng = $radiusM = '';
+$polygonPointsJson = '';
+$northLat = $southLat = $eastLng = $westLng = '';
+$rectangleBoundsJson = '';
+
+$decoded = json_decode($gGeojson, true);
+if (is_array($decoded)) {
+    // Normalize to Feature
+    $feature = $decoded;
+    if (($feature['type'] ?? '') === 'FeatureCollection') {
+        $feature = $feature['features'][0] ?? [];
+    }
+
+    $props = [];
+    $geom  = null;
+
+    if (($feature['type'] ?? '') === 'Feature') {
+        $props = is_array($feature['properties'] ?? null) ? $feature['properties'] : [];
+        $geom  = $feature['geometry'] ?? null;
+    } elseif (isset($feature['type'], $feature['coordinates'])) {
+        $geom = $feature; // geometry-only
+    }
+
+    if ($gDesc === '' && isset($props['description'])) {
+        $gDesc = (string)$props['description'];
+    }
+
+    if (is_array($geom)) {
+        $geomType = (string)($geom['type'] ?? '');
+
+        if ($geomType === 'Point') {
+            $coords = $geom['coordinates'] ?? null;
+            if (is_array($coords) && count($coords) >= 2) {
+                $centerLng = (string)$coords[0];
+                $centerLat = (string)$coords[1];
+            }
+            if (isset($props['radius_m'])) {
+                $radiusM = (string)$props['radius_m'];
+            }
+        }
+
+        if ($geomType === 'Polygon') {
+            $ring = $geom['coordinates'][0] ?? [];
+            if (is_array($ring) && count($ring) >= 3) {
+                // drop closing point if equals first
+                $first = $ring[0];
+                $last  = $ring[count($ring) - 1];
+                if (is_array($first) && is_array($last) && count($first) >= 2 && count($last) >= 2) {
+                    if ((float)$first[0] === (float)$last[0] && (float)$first[1] === (float)$last[1]) {
+                        array_pop($ring);
+                    }
+                }
+
+                $pts = [];
+                $lats = [];
+                $lngs = [];
+
+                foreach ($ring as $c) {
+                    if (is_array($c) && count($c) >= 2) {
+                        $lng = (float)$c[0];
+                        $lat = (float)$c[1];
+                        $pts[] = ['lat' => $lat, 'lng' => $lng];
+                        $lats[] = $lat;
+                        $lngs[] = $lng;
+                    }
+                }
+
+                if ($pts) {
+                    $polygonPointsJson = json_encode($pts, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+                    $northLat = (string)max($lats);
+                    $southLat = (string)min($lats);
+                    $eastLng  = (string)max($lngs);
+                    $westLng  = (string)min($lngs);
+
+                    $rectangleBoundsJson = json_encode([
+                        'north' => (float)$northLat,
+                        'south' => (float)$southLat,
+                        'east'  => (float)$eastLng,
+                        'west'  => (float)$westLng,
+                    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                }
+            }
+        }
+    }
+}
 ?>
 
-<div class="container-fluid">
-    <div class="row g-3 py-2">
+<div class="container-fluid mt-3">
+    <div class="row g-3">
 
-        <!-- LEFT COLUMN – FORM -->
-        <div class="col-12 col-lg-4">
-            <h4 class="mb-3"><i class="bi bi-geo-alt"></i> Edit Geofence</h4>
+        <!-- Sidebar -->
+        <div class="col-12 col-md-3 col-lg-2">
+            <?php require __DIR__ . '/../layout/sidebar.php'; ?>
+        </div>
 
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <form id="geofence-form" method="POST" action="/admin/geofences/update/<?= $geofence['id'] ?>">
+        <!-- Main -->
+        <main class="col-md-9 col-lg-10">
 
-                        <input type="hidden" id="geofence-id" value="<?= $geofence['id'] ?>">
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb small mb-0">
+                    <li class="breadcrumb-item"><a href="/admin">Admin</a></li>
+                    <li class="breadcrumb-item"><a href="/admin/geofences">Geofences</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Edit</li>
+                </ol>
+            </nav>
 
-                        <!-- NAME -->
-                        <div class="mb-3">
-                            <label class="form-label">Name *</label>
-                            <input type="text"
-                                   class="form-control"
-                                   id="name"
-                                   name="name"
-                                   required
-                                   value="<?= htmlspecialchars($geofence['name']) ?>">
-                        </div>
+            <div class="row g-3">
 
-                        <!-- DESCRIPTION -->
-                        <div class="mb-3">
-                            <label class="form-label">Description</label>
-                            <textarea id="description"
-                                      name="description"
-                                      class="form-control"
-                                      rows="2"><?= htmlspecialchars($geofence['description']) ?></textarea>
-                        </div>
+                <!-- FORM -->
+                <div class="col-12 col-lg-4 col-xl-4">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <h2 class="h5 mb-0"><i class="bi bi-geo-alt"></i> Edit Geofence</h2>
+                    </div>
 
-                        <!-- TYPE -->
-                        <div class="mb-3">
-                            <label class="form-label">Type *</label>
-                            <select id="type" name="type" class="form-select">
-                                <option value="circle" <?= $geofence['type'] === 'circle' ? 'selected' : '' ?>>Circle</option>
-                                <option value="polygon" <?= $geofence['type'] === 'polygon' ? 'selected' : '' ?>>Polygon</option>
-                            </select>
-                        </div>
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <form id="geofence-form" action="/admin/geofences/update/<?= $geofenceId ?>" method="POST">
 
-                        <!-- CIRCLE -->
-                        <div id="circle-section" class="border rounded bg-light p-3 mb-3">
-                            <h6 class="fw-semibold mb-2">Circle Settings</h6>
+                                <input type="hidden" id="geofence-id" value="<?= $geofenceId ?>">
 
-                            <label class="form-label">Center Latitude</label>
-                            <input id="center_lat" name="center_lat"
-                                   class="form-control mb-2"
-                                   value="<?= $geofence['center_lat'] ?>">
+                                <!-- Canonical payload -->
+                                <input type="hidden" id="geojson" name="geojson"
+                                       value="<?= htmlspecialchars($gGeojson, ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="hidden" id="rectangle_bounds" name="rectangle_bounds"
+                                       value="<?= htmlspecialchars($rectangleBoundsJson, ENT_QUOTES, 'UTF-8') ?>">
 
-                            <label class="form-label">Center Longitude</label>
-                            <input id="center_lng" name="center_lng"
-                                   class="form-control mb-2"
-                                   value="<?= $geofence['center_lng'] ?>">
-
-                            <label class="form-label">Radius (meters)</label>
-                            <input id="radius_m" name="radius_m"
-                                   class="form-control"
-                                   value="<?= $geofence['radius_m'] ?>">
-                        </div>
-
-                        <!-- POLYGON -->
-                        <div id="polygon-section" class="border rounded bg-light p-3 mb-3" style="display:none;">
-                            <h6 class="fw-semibold mb-2">Polygon Points (JSON)</h6>
-                            <textarea id="polygon_points"
-                                      name="polygon_points"
-                                      class="form-control"
-                                      rows="4"><?= htmlspecialchars($geofence['polygon_points']) ?></textarea>
-                        </div>
-
-                        <!-- VEHICLE ASSIGNMENT -->
-                        <div class="mb-3">
-                            <label class="form-label">Applies to vehicles</label>
-
-                            <div class="form-check mb-2">
-                                <input class="form-check-input"
-                                       type="checkbox"
-                                       id="applies_all"
-                                       name="applies_to_all_vehicles"
-                                       <?= $geofence['applies_to_all_vehicles'] ? 'checked' : '' ?>>
-                                <label class="form-check-label">Applies to all vehicles</label>
-                            </div>
-
-                            <!-- SPECIFIC VEHICLES -->
-                            <div id="vehicle-select-wrapper" style="<?= $geofence['applies_to_all_vehicles'] ? 'display:none;' : '' ?>">
-                                <label class="form-label">Specific Vehicles</label>
-
-                                <select id="vehicle_ids" name="vehicle_ids[]" class="form-select" multiple>
-                                    <?php foreach ($vehicles as $v): ?>
-                                        <option value="<?= $v['id'] ?>"
-                                            <?= in_array($v['id'], $assignedVehicles) ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars($v['vehicle_number'] . ' — ' . $v['make'] . ' ' . $v['model'] . ' (' . $v['license_plate'] . ')') ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-
-                                <div class="form-text">
-                                    Hold CTRL/CMD to select multiple vehicles.
+                                <!-- NAME -->
+                                <div class="mb-3">
+                                    <label class="form-label">Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="name" name="name" required
+                                           value="<?= htmlspecialchars($gName, ENT_QUOTES, 'UTF-8') ?>">
                                 </div>
+
+                                <!-- DESCRIPTION -->
+                                <div class="mb-3">
+                                    <label class="form-label">Description</label>
+                                    <textarea class="form-control" id="description" name="description" rows="2"><?= htmlspecialchars($gDesc, ENT_QUOTES, 'UTF-8') ?></textarea>
+                                </div>
+
+                                <!-- TYPE -->
+                                <div class="mb-3">
+                                    <label class="form-label">Type <span class="text-danger">*</span></label>
+                                    <select id="type" name="type" class="form-select">
+                                        <option value="circle" <?= $gType === 'circle' ? 'selected' : '' ?>>Circle</option>
+                                        <option value="polygon" <?= $gType === 'polygon' ? 'selected' : '' ?>>Polygon</option>
+                                        <option value="rectangle" <?= $gType === 'rectangle' ? 'selected' : '' ?>>Rectangle</option>
+                                    </select>
+                                </div>
+
+                                <!-- ACTIVE -->
+                                <div class="form-check form-switch mb-3">
+                                    <!-- IMPORTANT: name="active" (controller reads isset($_POST['active'])) -->
+                                    <input class="form-check-input" type="checkbox" role="switch" id="active" name="active" <?= $isActive ? 'checked' : '' ?>>
+                                    <label class="form-check-label" for="active">Active</label>
+                                </div>
+
+                                <!-- CIRCLE SETTINGS (legacy) -->
+                                <div id="circle-section" class="border rounded bg-light p-3 mb-3" style="display:none;">
+                                    <h6 class="fw-semibold mb-2">Circle Settings (legacy)</h6>
+
+                                    <label class="form-label">Center Latitude</label>
+                                    <input type="text" class="form-control mb-2" id="center_lat" name="center_lat"
+                                           value="<?= htmlspecialchars($centerLat, ENT_QUOTES, 'UTF-8') ?>">
+
+                                    <label class="form-label">Center Longitude</label>
+                                    <input type="text" class="form-control mb-2" id="center_lng" name="center_lng"
+                                           value="<?= htmlspecialchars($centerLng, ENT_QUOTES, 'UTF-8') ?>">
+
+                                    <label class="form-label">Radius (meters)</label>
+                                    <input type="text" class="form-control" id="radius_m" name="radius_m"
+                                           value="<?= htmlspecialchars($radiusM, ENT_QUOTES, 'UTF-8') ?>">
+                                </div>
+
+                                <!-- POLYGON SETTINGS (legacy) -->
+                                <div id="polygon-section" class="border rounded bg-light p-3 mb-3">
+                                    <h6 class="fw-semibold mb-2">Polygon Points (JSON) (legacy)</h6>
+                                    <textarea id="polygon_points"
+                                              name="polygon_points"
+                                              class="form-control"
+                                              rows="4"
+                                              placeholder='[{"lat":45.50,"lng":-73.56},{"lat":...,"lng":...}]'><?= htmlspecialchars($polygonPointsJson, ENT_QUOTES, 'UTF-8') ?></textarea>
+                                    <div class="form-text">
+                                        Leave as-is if your JS posts GeoJSON into <code>#geojson</code>.
+                                    </div>
+                                </div>
+
+                                <!-- RECTANGLE SETTINGS (legacy) -->
+                                <div id="rectangle-section" class="border rounded bg-light p-3 mb-3" style="display:none;">
+                                    <h6 class="fw-semibold mb-2">Rectangle Bounds (legacy)</h6>
+
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <label class="form-label">North (max lat)</label>
+                                            <input type="text" class="form-control" id="north_lat" name="north_lat"
+                                                   value="<?= htmlspecialchars($northLat, ENT_QUOTES, 'UTF-8') ?>">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label">South (min lat)</label>
+                                            <input type="text" class="form-control" id="south_lat" name="south_lat"
+                                                   value="<?= htmlspecialchars($southLat, ENT_QUOTES, 'UTF-8') ?>">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label">East (max lng)</label>
+                                            <input type="text" class="form-control" id="east_lng" name="east_lng"
+                                                   value="<?= htmlspecialchars($eastLng, ENT_QUOTES, 'UTF-8') ?>">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label">West (min lng)</label>
+                                            <input type="text" class="form-control" id="west_lng" name="west_lng"
+                                                   value="<?= htmlspecialchars($westLng, ENT_QUOTES, 'UTF-8') ?>">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-text mt-2">
+                                        Leave as-is if your JS posts GeoJSON into <code>#geojson</code>.
+                                    </div>
+                                </div>
+
+                                <!-- VEHICLE ASSIGNMENT -->
+                                <div class="mb-3">
+                                    <label class="form-label">Applies to vehicles</label>
+
+                                    <!-- IMPORTANT: do NOT include hidden input here, because controller uses isset() -->
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" id="applies_all"
+                                               name="applies_to_all_vehicles" <?= $appliesAll ? 'checked' : '' ?>>
+                                        <label class="form-check-label" for="applies_all">
+                                            Applies to all vehicles
+                                        </label>
+                                    </div>
+
+                                    <div id="vehicle-select-wrapper" class="mt-2" style="<?= $appliesAll ? 'display:none;' : '' ?>">
+                                        <label class="form-label">Specific vehicles</label>
+                                        <select id="vehicle_ids" name="vehicle_ids[]" class="form-select" multiple>
+                                            <?php foreach (($vehicles ?? []) as $v): ?>
+                                                <?php
+                                                $vn = $v['vehicle_number'] ?? ('#' . ($v['id'] ?? ''));
+                                                $lp = $v['license_plate'] ?? '';
+                                                $st = $v['status'] ?? '';
+                                                $label = trim($vn . ($lp ? " ({$lp})" : '') . ($st ? " — {$st}" : ''));
+                                                $selected = in_array((int)$v['id'], $assignedVehiclesInt, true);
+                                                ?>
+                                                <option value="<?= (int)$v['id'] ?>" <?= $selected ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-primary">
+                                        <i class="bi bi-check2-circle"></i> Save
+                                    </button>
+                                    <a href="/admin/geofences" class="btn btn-outline-secondary">Cancel</a>
+                                </div>
+
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MAP -->
+                <div class="col-12 col-lg-8 col-xl-8">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-map"></i> Map Editor</span>
+
+                            <div class="btn-group btn-group-sm">
+                                <button id="btn-draw-circle" class="btn btn-outline-primary" type="button" title="Draw circle">
+                                    <i class="bi bi-circle"></i>
+                                </button>
+                                <button id="btn-draw-polygon" class="btn btn-outline-primary" type="button" title="Draw polygon">
+                                    <i class="bi bi-vector-pen"></i>
+                                </button>
+                                <button id="btn-convert" class="btn btn-outline-secondary" type="button" title="Convert">
+                                    <i class="bi bi-arrow-left-right"></i>
+                                </button>
+
+                                <!-- Compatibility: btn-reset vs btn-clear -->
+                                <button id="btn-reset" class="btn btn-outline-danger" type="button" title="Reset/Clear">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                <button id="btn-clear" class="btn btn-outline-danger d-none" type="button" aria-hidden="true"></button>
                             </div>
                         </div>
 
-                        <!-- ACTIVE -->
-                        <div class="form-check mb-3">
-                            <input type="checkbox" id="active" name="active"
-                                   class="form-check-input"
-                                   <?= $geofence['active'] ? 'checked' : '' ?>>
-                            <label class="form-check-label" for="active">Active</label>
+                        <div class="card-body p-0 d-flex flex-column" style="min-height: 560px;">
+                            <div class="p-2 d-flex flex-wrap gap-2 border-bottom">
+                                <button id="btn-undo" class="btn btn-outline-secondary btn-sm" type="button">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Undo
+                                </button>
+                                <button id="btn-redo" class="btn btn-outline-secondary btn-sm" type="button">
+                                    <i class="bi bi-arrow-clockwise"></i> Redo
+                                </button>
+                                <button id="btn-toggle-snap" class="btn btn-outline-secondary btn-sm" type="button">
+                                    Snap: ON
+                                </button>
+                                <button id="btn-toggle-grid" class="btn btn-outline-secondary btn-sm" type="button">
+                                    Grid: ON
+                                </button>
+                            </div>
+
+                            <div class="card-body p-0 d-flex flex-column" style="min-height: 560px;">
+                                <div id="edit-map" class="flex-grow-1 border-top"></div>
+                            </div>
                         </div>
 
-                        <!-- BUTTONS -->
-                        <div class="d-flex justify-content-between mt-3">
-                            <a href="/admin/geofences" class="btn btn-outline-secondary">Cancel</a>
-                            <button class="btn btn-primary">
-                                <i class="bi bi-check-circle"></i> Save Changes
-                            </button>
+                        <div class="card-footer small text-muted">
+                            Editing the map should update <code>#geojson</code>.
                         </div>
-
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- RIGHT COLUMN – MAP -->
-        <div class="col-12 col-lg-8">
-            <div class="card shadow-sm h-100">
-
-                <div class="card-header d-flex justify-content-between align-items-center">
-
-                    <span><i class="bi bi-map"></i> Edit Shape</span>
-
-                    <div class="btn-group btn-group-sm">
-                        <button id="btn-draw-circle" class="btn btn-outline-primary" type="button">
-                            <i class="bi bi-circle"></i>
-                        </button>
-                        <button id="btn-draw-polygon" class="btn btn-outline-primary" type="button">
-                            <i class="bi bi-vector-pen"></i>
-                        </button>
-                        <button id="btn-convert" class="btn btn-outline-secondary" type="button">
-                            <i class="bi bi-arrow-left-right"></i>
-                        </button>
-                        <button id="btn-reset" class="btn btn-outline-danger" type="button">
-                            <i class="bi bi-x-circle"></i>
-                        </button>
                     </div>
                 </div>
 
-                <div class="card-body p-0">
-                    <div class="p-2 d-flex flex-wrap gap-2">
-                        <button id="btn-undo" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-counterclockwise"></i> Undo</button>
-                        <button id="btn-redo" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-clockwise"></i> Redo</button>
-                        <button id="btn-toggle-snap" class="btn btn-outline-secondary btn-sm">Snap: ON</button>
-                        <button id="btn-toggle-grid" class="btn btn-outline-secondary btn-sm">Grid: ON</button>
-                    </div>
-
-                    <div id="edit-map" class="map-flex-fill border-top"></div>
-                </div>
-
-                <div class="card-footer small text-muted">
-                    Drag or resize the shape. Changes sync automatically.
-                </div>
-
             </div>
-        </div>
 
+        </main>
     </div>
 </div>
 
 <script>
-document.getElementById("applies_all").addEventListener("change", function () {
-    document.getElementById("vehicle-select-wrapper").style.display =
-        this.checked ? "none" : "block";
-});
+(function () {
+    // Type section toggle
+    const typeEl = document.getElementById('type');
+    const circle = document.getElementById('circle-section');
+    const poly   = document.getElementById('polygon-section');
+    const rect   = document.getElementById('rectangle-section');
+
+    function syncTypeSections() {
+        const t = (typeEl?.value || 'polygon');
+        if (circle) circle.style.display = (t === 'circle') ? 'block' : 'none';
+        if (poly)   poly.style.display   = (t === 'polygon') ? 'block' : 'none';
+        if (rect)   rect.style.display   = (t === 'rectangle') ? 'block' : 'none';
+    }
+    typeEl?.addEventListener('change', syncTypeSections);
+    syncTypeSections();
+
+    // Vehicle select toggle
+    const applies = document.getElementById("applies_all");
+    const wrapper = document.getElementById("vehicle-select-wrapper");
+
+    function syncVehicleSelect() {
+        if (!applies || !wrapper) return;
+        wrapper.style.display = applies.checked ? "none" : "block";
+    }
+    applies?.addEventListener("change", syncVehicleSelect);
+    syncVehicleSelect();
+
+    // Button ID compatibility
+    const btnClear = document.getElementById('btn-clear');
+    const btnReset = document.getElementById('btn-reset');
+    if (btnClear && btnReset) {
+        btnClear.addEventListener('click', () => btnReset.click());
+    }
+
+    window.setTimeout(() => {
+        const mapEl = document.getElementById('edit-map');
+        if (mapEl && mapEl.offsetHeight < 200) {
+            mapEl.style.minHeight = '560px';
+        }
+    }, 0);
+})();
 </script>
 
-<!-- Leaflet core -->
+<!-- Leaflet CSS can be in <head> -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- Leaflet.Editable (WORKING VERSION) -->
+<!-- Scripts: MUST be in this order -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-editable@1.2.0/src/Leaflet.Editable.js"></script>
 
-<!-- Your geofence editor engine -->
-<script src="/assets/js/geofence-core.js?v=1"></script>
-<script src="/assets/js/geofence-editor.js?v=1"></script>
+<script src="/assets/js/geofence-core.js?v=10"></script>
+<script src="/assets/js/geofence-editor.js?v=10"></script>
 
 <?php require __DIR__ . "/../../layout/footer.php"; ?>
