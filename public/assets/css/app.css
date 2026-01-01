@@ -99,3 +99,18 @@ body {
 .w-fit {
     width: fit-content;
 }
+
+/* Customers Admin Index table for the animation of teh chevron rotate */
+.js-cust-notes-chevron {
+  display: inline-block;
+  transition: transform 160ms ease;
+}
+
+.js-cust-notes-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+/*  Admin Driver button opacity Fix - If you have a "fade actions until hover" pattern somewhere, disable it for Drivers */
+.table tr .btn-group  {
+  opacity: 1 !important;
+}

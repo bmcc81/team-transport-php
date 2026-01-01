@@ -22,6 +22,7 @@
                     <table class="table table-hover table-sm mb-0">
                         <thead class="table-light">
                         <tr>
+                            <th style="width: 1%;"></th>
                             <th>Company</th>
                             <th>Contact</th>
                             <th>Email</th>
@@ -30,26 +31,54 @@
                         </tr>
                         </thead>
                         <tbody>
+                        <tbody>
                         <?php foreach ($customers as $c): ?>
+                            <?php $rowId = 'cust-notes-' . (int)($c['id'] ?? 0); ?>
                             <tr>
-                                <td><?= htmlspecialchars($c['customer_company_name'] ?? '') ?></td>
-                                <td><?= htmlspecialchars(
-                                        ($c['customer_contact_first_name'] ?? '') . ' ' . ($c['customer_contact_last_name'] ?? '')
-                                    ) ?></td>
-                                <td><?= htmlspecialchars($c['customer_email'] ?? '') ?></td>
-                                <td><?= htmlspecialchars($c['customer_contact_city'] ?? '') ?></td>
-                                <td>
-                                    <a href="/admin/customers/edit/<?= $c['id'] ?>"
-                                       class="btn btn-sm btn-outline-primary">
+                                <td class="align-middle">
+                                    <button
+                                        class="btn btn-sm btn-outline-secondary"
+                                        type="button"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#<?= $rowId ?>"
+                                        aria-expanded="false"
+                                        aria-controls="<?= $rowId ?>"
+                                        title="Show notes"
+                                    >
+                                        <i class="bi bi-chevron-down js-cust-notes-chevron"></i>
+                                    </button>
+                                </td>
+
+                                <td class="align-middle"><?= htmlspecialchars($c['company'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
+                                <td class="align-middle"><?= htmlspecialchars($c['contact'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
+                                <td class="align-middle"><?= htmlspecialchars($c['email'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
+                                <td class="align-middle"><?= htmlspecialchars($c['city'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
+
+                                <td class="align-middle">
+                                    <a href="/admin/customers/edit/<?= (int)($c['id'] ?? 0) ?>"
+                                    class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-pencil"></i>
                                     </a>
-                                    <form action="/admin/customers/delete/<?= $c['id'] ?>"
-                                          method="POST" class="d-inline"
-                                          onsubmit="return confirm('Delete this customer?');">
-                                        <button class="btn btn-sm btn-outline-danger">
+
+                                    <form action="/admin/customers/delete/<?= (int)($c['id'] ?? 0) ?>"
+                                        method="POST" class="d-inline"
+                                        onsubmit="return confirm('Delete this customer?');">
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </form>
+                                </td>
+                            </tr>
+
+                            <!-- Collapsible notes row -->
+                            <tr class="collapse" id="<?= $rowId ?>">
+                                <td colspan="6" class="bg-light">
+                                    <div class="py-2">
+                                        <div class="small text-muted mb-1">Notes:</div>
+                                        <div>
+                                            <?= nl2br(htmlspecialchars($c['notes'] ?? '', ENT_QUOTES, 'UTF-8')) ?: '<span class="text-muted small">No notes.</span>' ?>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

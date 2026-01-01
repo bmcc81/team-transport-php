@@ -50,13 +50,19 @@ class DriverAdminController extends Controller
 
         // Get loads for this driver
         $stmt = $pdo->prepare("
-            SELECT l.*, c.customer_company_name
+            SELECT
+                l.*,
+                c.name       AS customer_company_name,
+                c.first_name AS customer_contact_first_name,
+                c.last_name  AS customer_contact_last_name,
+                c.email      AS customer_email,
+                c.city       AS customer_contact_city
             FROM loads l
             LEFT JOIN customers c ON c.id = l.customer_id
             WHERE l.assigned_driver_id = ?
             ORDER BY l.pickup_date DESC
         ");
-        $stmt->execute([$id]);
+        $stmt->execute([(int)$id]);
         $loads = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Get assigned vehicle (if any)
@@ -184,20 +190,29 @@ class DriverAdminController extends Controller
 
         // Fetch vehicles
         $stmt = $pdo->prepare("
-            SELECT 
+            SELECT
                 v.id,
                 v.vehicle_number,
                 v.status,
-                v.maintenance_status,
                 v.assigned_driver_id,
-                u.full_name AS assigned_driver_name
+                u.full_name AS assigned_driver_name,
+                CASE
+                    WHEN v.status = 'maintenance' THEN 'maintenance'
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM vehicle_maintenance vm
+                        WHERE vm.vehicle_id = v.id
+                        AND vm.status IN ('planned','in_progress')
+                        AND vm.scheduled_date <= CURDATE()
+                    ) THEN 'due'
+                    ELSE 'ok'
+                END AS maintenance_status
             FROM vehicles v
             LEFT JOIN users u ON u.id = v.assigned_driver_id
-            WHERE v.status != 'retired'
             ORDER BY v.vehicle_number
         ");
         $stmt->execute();
-        $vehicles = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $vehicles = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $this->view('admin/drivers/assign_vehicle', [
             'driver'           => $driver,
@@ -219,9 +234,22 @@ class DriverAdminController extends Controller
 
         // 🔒 Validate vehicle BEFORE starting transaction
         $stmt = $pdo->prepare("
-            SELECT status, maintenance_status
-            FROM vehicles
-            WHERE id = ?
+            SELECT
+                v.status,
+                v.assigned_driver_id,
+                CASE
+                    WHEN v.status = 'maintenance' THEN 'maintenance'
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM vehicle_maintenance vm
+                        WHERE vm.vehicle_id = v.id
+                        AND vm.status IN ('planned','in_progress')
+                        AND vm.scheduled_date <= CURDATE()
+                    ) THEN 'due'
+                    ELSE 'ok'
+                END AS maintenance_status
+            FROM vehicles v
+            WHERE v.id = ?
         ");
         $stmt->execute([$vehicleId]);
         $vehicle = $stmt->fetch(\PDO::FETCH_ASSOC);
@@ -232,13 +260,14 @@ class DriverAdminController extends Controller
         }
 
         if (
-            $vehicle['status'] === 'retired' ||
             $vehicle['status'] === 'maintenance' ||
-            $vehicle['maintenance_status'] !== 'ok'
+            $vehicle['maintenance_status'] !== 'ok' ||
+            (!empty($vehicle['assigned_driver_id']) && (int)$vehicle['assigned_driver_id'] !== (int)$driverId)
         ) {
-            $_SESSION['errors'][] = 'Vehicle cannot be assigned while under maintenance.';
+            $_SESSION['errors'][] = 'Vehicle cannot be assigned (maintenance or already assigned).';
             $this->redirect("/admin/drivers/assign-vehicle/{$driverId}");
         }
+
 
         // ✅ Now we can safely mutate state
         $pdo->beginTransaction();

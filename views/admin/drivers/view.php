@@ -26,12 +26,19 @@ require __DIR__ . '/../../layout/header.php';
                 <div class="card-body">
                     <h5>Assigned Vehicle</h5>
 
-                    <?php if ($vehicle): ?>
-                        <p><strong>Vehicle #:</strong> <?= htmlspecialchars($vehicle['vehicle_number']) ?></p>
-                        <p><strong>Model:</strong> <?= htmlspecialchars($vehicle['make'].' '.$vehicle['model']) ?></p>
-                        <p><strong>Plate:</strong> <?= htmlspecialchars($vehicle['license_plate']) ?></p>
+                    <?php if (!empty($vehicle)): ?>
+                        <p><strong>Vehicle #:</strong> <?= htmlspecialchars($vehicle['vehicle_number'] ?? '—', ENT_QUOTES, 'UTF-8') ?></p>
+
+                        <?php
+                            $make  = $vehicle['make']  ?? '';
+                            $model = $vehicle['model'] ?? '';
+                            $makeModel = trim($make . ' ' . $model);
+                        ?>
+                        <p><strong>Model:</strong> <?= htmlspecialchars($makeModel !== '' ? $makeModel : '—', ENT_QUOTES, 'UTF-8') ?></p>
+
+                        <p><strong>Plate:</strong> <?= htmlspecialchars($vehicle['license_plate'] ?? '—', ENT_QUOTES, 'UTF-8') ?></p>
                     <?php else: ?>
-                        <p class="text-muted">No vehicle assigned.</p>
+                        <p class="text-muted mb-0">No vehicle assigned.</p>
                     <?php endif; ?>
                 </div>
             </div>

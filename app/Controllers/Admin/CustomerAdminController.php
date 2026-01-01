@@ -20,18 +20,20 @@ class CustomerAdminController extends Controller
     public function store(): void
     {
         $data = [
-            'company'    => $_POST['company'] ?? '',
-            'first_name' => $_POST['first_name'] ?? '',
-            'last_name'  => $_POST['last_name'] ?? '',
-            'phone'      => $_POST['phone'] ?? '',
-            'email'      => $_POST['email'] ?? '',
-            'address'    => $_POST['address'] ?? '',
-            'city'       => $_POST['city'] ?? '',
-            'postal'     => $_POST['postal'] ?? '',
-            'notes'      => $_POST['notes'] ?? ''
+            'name'        => $_POST['company'] ?? '',
+            'first_name'  => $_POST['first_name'] ?? '',
+            'last_name'   => $_POST['last_name'] ?? '',
+            'phone'       => $_POST['phone'] ?? '',
+            'email'       => $_POST['email'] ?? '',
+            'address'     => $_POST['address'] ?? '',
+            'city'        => $_POST['city'] ?? '',
+            'postal_code' => $_POST['postal'] ?? '',
+            'notes'       => $_POST['notes'] ?? '',
         ];
 
-        Customer::create($data, $_SESSION['user_id']);
+
+        Customer::create($data, $_SESSION['user_id'] ?? null);
+
         header("Location: /admin/customers");
         exit;
     }
@@ -50,18 +52,16 @@ class CustomerAdminController extends Controller
     public function update($id): void
     {
         $data = [
-            'company'    => $_POST['company'] ?? '',
-            'first_name' => $_POST['first_name'] ?? '',
-            'last_name'  => $_POST['last_name'] ?? '',
-            'phone'      => $_POST['phone'] ?? '',
-            'email'      => $_POST['email'] ?? '',
-            'address'    => $_POST['address'] ?? '',
-            'city'       => $_POST['city'] ?? '',
-            'postal'     => $_POST['postal'] ?? '',
-            'notes'      => $_POST['notes'] ?? ''
+            'name'        => $_POST['company'] ?? '',
+            'phone'       => $_POST['phone'] ?? '',
+            'email'       => $_POST['email'] ?? '',
+            'address'     => $_POST['address'] ?? '',
+            'city'        => $_POST['city'] ?? '',
+            'postal_code' => $_POST['postal'] ?? '',
         ];
 
         Customer::update((int)$id, $data);
+
         header("Location: /admin/customers");
         exit;
     }

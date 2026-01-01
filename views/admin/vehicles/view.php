@@ -16,7 +16,13 @@ $overdue = VehicleMaintenance::countDueOrOverdueForVehicle($vehicle->id);
 
 // Fetch maintenance summary
 $maintenance = $pdo->prepare("
-    SELECT id, title, description, scheduled_date, completed_date, status
+    SELECT
+        id,
+        maintenance_type AS title,
+        notes            AS description,
+        scheduled_date,
+        completed_date,
+        status
     FROM vehicle_maintenance
     WHERE vehicle_id = ?
     ORDER BY scheduled_date ASC
@@ -156,7 +162,8 @@ if ($yearValue >= $currentYear - 3) {
 
                                 <div class="col-md-6">
                                     <label class="fw-bold small text-muted">Make &amp; Model</label>
-                                    <div><?= e(($vehicle->make ?? '') . ' ' . ($vehicle->model ?? '')) ?></div>
+                                    <?php $makeModel = trim(($vehicle->make ?? '') . ' ' . ($vehicle->model ?? '')); ?>
+                                    <div><?= e($makeModel !== '' ? $makeModel : '—') ?></div>
                                 </div>
 
                                 <div class="col-md-4">

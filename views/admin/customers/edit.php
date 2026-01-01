@@ -12,57 +12,98 @@
 
             <h2 class="h4 mb-3">Edit Customer</h2>
 
-            <form method="POST" action="/admin/customers/edit/<?= $customer['id'] ?>" class="card p-3 shadow-sm">
+            <form method="POST" action="/admin/customers/edit/<?= (int)($customer['id'] ?? 0) ?>" class="card p-3 shadow-sm">
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Company</label>
-                        <input type="text" name="company" value="<?= htmlspecialchars($customer['customer_company_name']) ?>" class="form-control" required>
+                        <input
+                            type="text"
+                            name="company"
+                            value="<?= htmlspecialchars($customer['company'] ?? $customer['name'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                            class="form-control"
+                            required
+                        >
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Contact Phone</label>
-                        <input type="text" name="phone" value="<?= htmlspecialchars($customer['customer_contact_phone']) ?>" class="form-control">
+                        <input
+                            type="text"
+                            name="phone"
+                            value="<?= htmlspecialchars($customer['phone'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                            class="form-control"
+                        >
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label">First Name</label>
-                        <input type="text" name="first_name" value="<?= htmlspecialchars($customer['customer_contact_first_name']) ?>" class="form-control">
+                        <input
+                            type="text"
+                            name="first_name"
+                            value="<?= htmlspecialchars($customer['first_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                            class="form-control"
+                        >
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Last Name</label>
-                        <input type="text" name="last_name" value="<?= htmlspecialchars($customer['customer_contact_last_name']) ?>" class="form-control">
+                        <input
+                            type="text"
+                            name="last_name"
+                            value="<?= htmlspecialchars($customer['last_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                            class="form-control"
+                        >
                     </div>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Email</label>
-                    <input type="email" name="email" value="<?= htmlspecialchars($customer['customer_email']) ?>" class="form-control">
+                    <input
+                        type="email"
+                        name="email"
+                        value="<?= htmlspecialchars($customer['email'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                        class="form-control"
+                    >
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Address</label>
-                    <input type="text" name="address" value="<?= htmlspecialchars($customer['customer_address']) ?>" class="form-control">
+                    <input
+                        type="text"
+                        name="address"
+                        value="<?= htmlspecialchars($customer['address'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                        class="form-control"
+                    >
                 </div>
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label">City</label>
-                        <input type="text" name="city" value="<?= htmlspecialchars($customer['customer_contact_city']) ?>" class="form-control">
+                        <input
+                            type="text"
+                            name="city"
+                            value="<?= htmlspecialchars($customer['city'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                            class="form-control"
+                        >
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Postal Code</label>
-                        <input type="text" name="postal" value="<?= htmlspecialchars($customer['customer_contact_postal_code']) ?>" class="form-control">
+                        <input
+                            type="text"
+                            name="postal"
+                            value="<?= htmlspecialchars($customer['postal'] ?? $customer['postal_code'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                            class="form-control"
+                        >
                     </div>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Notes</label>
-                    <textarea name="notes" class="form-control" rows="3"><?= htmlspecialchars($customer['notes']) ?></textarea>
+                    <textarea name="notes" class="form-control" rows="3"><?= htmlspecialchars($customer['notes'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
                 </div>
 
-                <button class="btn btn-primary">Save Changes</button>
+                <button class="btn btn-primary" type="submit">Save Changes</button>
                 <a href="/admin/customers" class="btn btn-secondary">Cancel</a>
 
             </form>

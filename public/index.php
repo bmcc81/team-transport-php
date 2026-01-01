@@ -146,20 +146,25 @@ $router->get('/admin/vehicles/delete/{id}',         'Admin\\VehicleAdminControll
 $router->post('/admin/vehicles/delete/{id}',        'Admin\\VehicleAdminController@delete',        ['auth']);
 $router->post('/admin/vehicles/{id}/assign-driver', 'Admin\\VehicleAdminController@assignDriver', ['auth']);
 
-// ADD THIS BEFORE THE DYNAMIC ROUTES:
-$router->get('/admin/vehicles/{id}/maintenance', 'Admin\\VehicleAdminController@maintenance', ['auth']);
-
 // DYNAMIC ROUTES LAST (or they will steal /map)
 $router->get('/admin/vehicles/view/{id}',       'Admin\\VehicleAdminController@profile', ['auth']);
 $router->get('/admin/vehicles/{id}',            'Admin\\VehicleAdminController@profile', ['auth']);
 
 /*
-|--------------------------------------------------------------------------
+|------------------------------------------------------------------------
+--
 | ADMIN: VEHICLES Maintenance
 |--------------------------------------------------------------------------
 */
-$router->get('/admin/vehicles/{id}/maintenance/create', 'Admin\\VehicleAdminController@maintenanceCreate', ['auth']);
+$router->get('/admin/vehicles/{id}/maintenance', 'Admin\\VehicleAdminController@maintenance', ['auth']);
+
+$router->get( '/admin/vehicles/{id}/maintenance/create', 'Admin\\VehicleAdminController@maintenanceCreate', ['auth']);
 $router->post('/admin/vehicles/{id}/maintenance/create', 'Admin\\VehicleAdminController@maintenanceStore', ['auth']);
+
+// Complete + Delete (POST)
+$router->post('/admin/vehicles/edit/{id}',                                  'Admin\\VehicleAdminController@update',              ['auth']);
+$router->post('/admin/vehicles/{id}/maintenance/{maintenanceId}/complete',  'Admin\\VehicleAdminController@maintenanceComplete', ['auth']);
+$router->post('/admin/vehicles/{id}/maintenance/{maintenanceId}/delete',    'Admin\\VehicleAdminController@maintenanceDelete',   ['auth']);
 
 /*
 |--------------------------------------------------------------------------

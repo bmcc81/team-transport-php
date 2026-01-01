@@ -15,9 +15,7 @@ class VehicleAdminController extends Controller
      */
     public function index(): void
     {
-        // Returns array<Vehicle>
         $vehicles = Vehicle::all();
-
         $this->view('admin/vehicles/index', compact('vehicles'));
     }
 
@@ -47,38 +45,46 @@ class VehicleAdminController extends Controller
 
     /**
      * Store a new vehicle.
+     * Schema-aligned to vehicles table:
+     * vehicle_number, license_plate, make, model, year, status
      */
     public function store(): void
     {
         $pdo = Database::pdo();
 
+        $vehicleNumber = trim($_POST['vehicle_number'] ?? '');
+        $plate         = trim($_POST['license_plate'] ?? '');
+        $make          = trim($_POST['make'] ?? '');
+        $model         = trim($_POST['model'] ?? '');
+        $year          = ($_POST['year'] ?? '') !== '' ? (int)$_POST['year'] : null;
+        $status        = $_POST['status'] ?? 'available';
+
+        $allowedStatus = ['available', 'in_service', 'maintenance'];
+        if (!in_array($status, $allowedStatus, true)) {
+            $status = 'available';
+        }
+
         $stmt = $pdo->prepare("
             INSERT INTO vehicles (
                 vehicle_number,
+                license_plate,
                 make,
                 model,
                 year,
-                license_plate,
-                vin,
-                capacity,
                 status,
-                maintenance_status,
                 created_at,
                 updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+            VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
         ");
 
         $stmt->execute([
-            $_POST['vehicle_number'] ?? null,
-            $_POST['make'] ?? null,
-            $_POST['model'] ?? null,
-            isset($_POST['year']) ? (int)$_POST['year'] : null,
-            $_POST['license_plate'] ?? null,
-            ($_POST['vin'] ?? '') !== '' ? $_POST['vin'] : null,
-            ($_POST['capacity'] ?? '') !== '' ? (int)$_POST['capacity'] : null,
-            $_POST['status'] ?? 'available',
-            $_POST['maintenance_status'] ?? 'ok',
+            $vehicleNumber !== '' ? $vehicleNumber : null,
+            $plate !== '' ? $plate : null,
+            $make !== '' ? $make : null,
+            $model !== '' ? $model : null,
+            $year,
+            $status,
         ]);
 
         $_SESSION['success'] = "Vehicle created successfully.";
@@ -107,68 +113,53 @@ class VehicleAdminController extends Controller
     public function update(string $id): void
     {
         $pdo = Database::pdo();
+        $id  = (int)$id;
 
-        // Normalize incoming values
-        $status = $_POST['status'] ?? 'available';
-        $maintenanceStatus = $_POST['maintenance_status'] ?? 'ok';
+        $vehicleNumber = trim($_POST['vehicle_number'] ?? '');
+        $plate         = trim($_POST['license_plate'] ?? '');
+        $make          = trim($_POST['make'] ?? '');
+        $model         = trim($_POST['model'] ?? '');
+        $year          = ($_POST['year'] ?? '') !== '' ? (int)$_POST['year'] : null;
+        $vin           = trim($_POST['vin'] ?? '');
+        $status        = $_POST['status'] ?? 'available';
 
-        // Business rule:
-        // If vehicle enters maintenance, auto-unassign driver
-        $mustUnassign = (
-            $status === 'maintenance' ||
-            $maintenanceStatus !== 'ok'
-        );
-
-        $pdo->beginTransaction();
-
-        try {
-            $stmt = $pdo->prepare("
-                UPDATE vehicles
-                SET
-                    vehicle_number      = ?,
-                    make                = ?,
-                    model               = ?,
-                    year                = ?,
-                    license_plate       = ?,
-                    vin                 = ?,
-                    capacity            = ?,
-                    status              = ?,
-                    maintenance_status  = ?,
-                    assigned_driver_id  = CASE WHEN ? THEN NULL ELSE assigned_driver_id END,
-                    updated_at          = NOW()
-                WHERE id = ?
-            ");
-
-            $stmt->execute([
-                $_POST['vehicle_number'] ?? null,
-                $_POST['make'] ?? null,
-                $_POST['model'] ?? null,
-                isset($_POST['year']) ? (int)$_POST['year'] : null,
-                $_POST['license_plate'] ?? null,
-                ($_POST['vin'] ?? '') !== '' ? $_POST['vin'] : null,
-                ($_POST['capacity'] ?? '') !== '' ? (int)$_POST['capacity'] : null,
-                $status,
-                $maintenanceStatus,
-                $mustUnassign ? 1 : 0,
-                (int)$id,
-            ]);
-
-            $pdo->commit();
-
-            $_SESSION['success'] = $mustUnassign
-                ? 'Vehicle updated. Driver was unassigned due to maintenance.'
-                : 'Vehicle updated.';
-
-            $this->redirect("/admin/vehicles/{$id}");
-
-        } catch (\Throwable $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            throw $e;
+        $allowedStatus = ['available', 'in_service', 'maintenance'];
+        if (!in_array($status, $allowedStatus, true)) {
+            $status = 'available';
         }
-    }
 
+        $mustUnassign = ($status === 'maintenance');
+
+        $stmt = $pdo->prepare("
+            UPDATE vehicles
+            SET
+                vehicle_number     = ?,
+                make               = ?,
+                model              = ?,
+                year               = ?,
+                license_plate      = ?,
+                vin                = ?,
+                status             = ?,
+                assigned_driver_id = CASE WHEN ? THEN NULL ELSE assigned_driver_id END,
+                updated_at         = NOW()
+            WHERE id = ?
+        ");
+
+        $stmt->execute([
+            $vehicleNumber !== '' ? $vehicleNumber : null,
+            $make !== '' ? $make : null,
+            $model !== '' ? $model : null,
+            $year,
+            $plate !== '' ? $plate : null,
+            $vin !== '' ? $vin : null,
+            $status,
+            $mustUnassign ? 1 : 0,
+            $id,
+        ]);
+
+        $_SESSION['success'] = 'Vehicle updated.';
+        $this->redirect("/admin/vehicles/view/{$id}");
+    }
 
     /**
      * Confirm delete screen.
@@ -202,10 +193,6 @@ class VehicleAdminController extends Controller
 
     /**
      * Assign or unassign a driver from a vehicle.
-     *
-     * Expects POST: 'assigned_driver_id'
-     * - 'none' → unassign
-     * - int id → assign
      */
     public function assignDriver(int $id): void
     {
@@ -226,12 +213,13 @@ class VehicleAdminController extends Controller
             $_SESSION['success'] = "Driver assigned.";
         }
 
-        $this->redirect("/admin/vehicles/{$id}");
+        // Adjust if your route differs
+        $this->redirect("/admin/vehicles/view/{$id}");
     }
 
     /**
      * Vehicles + Geofences map view.
-     * (This view still uses array rows; that’s fine.)
+     * Your schema uses last_lat/last_lng (not latitude/longitude).
      */
     public function map(): void
     {
@@ -245,8 +233,8 @@ class VehicleAdminController extends Controller
                 model,
                 license_plate,
                 status,
-                latitude,
-                longitude
+                last_lat AS latitude,
+                last_lng AS longitude
             FROM vehicles
             ORDER BY vehicle_number ASC
         ");
@@ -258,16 +246,57 @@ class VehicleAdminController extends Controller
     }
 
     /**
-     * Show create maintenance task form for a vehicle.
-     * (This part still works with arrays from PDO.)
+     * Maintenance index for vehicle.
+     */
+    public function maintenance($vehicleId): void
+    {
+        $pdo = Database::pdo();
+        $vehicleId = (int)$vehicleId;
+
+        $vehicle = Vehicle::find($vehicleId);
+        if (!$vehicle) {
+            http_response_code(404);
+            echo "Vehicle not found";
+            return;
+        }
+
+        $stmt = $pdo->prepare("
+            SELECT
+                id,
+                vehicle_id,
+                maintenance_type,
+                status,
+                scheduled_date,
+                completed_date,
+                notes,
+                created_at,
+                updated_at
+            FROM vehicle_maintenance
+            WHERE vehicle_id = ?
+            ORDER BY scheduled_date DESC, id DESC
+        ");
+        $stmt->execute([$vehicleId]);
+        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM vehicle_maintenance
+            WHERE vehicle_id = ?
+              AND status IN ('planned','in_progress')
+              AND scheduled_date < CURDATE()
+        ");
+        $stmt->execute([$vehicleId]);
+        $overdue = (int)$stmt->fetchColumn();
+
+        $this->view('admin/vehicles/maintenance', compact('vehicle', 'items', 'overdue'));
+    }
+
+    /**
+     * Show create maintenance form.
      */
     public function maintenanceCreate(int $id): void
     {
-        $pdo = Database::pdo();
-
-        $stmt = $pdo->prepare("SELECT * FROM vehicles WHERE id = ?");
-        $stmt->execute([$id]);
-        $vehicle = $stmt->fetch(PDO::FETCH_ASSOC);
+        $vehicle = Vehicle::find($id);
 
         if (!$vehicle) {
             http_response_code(404);
@@ -276,86 +305,111 @@ class VehicleAdminController extends Controller
         }
 
         $item = [
-            'title'          => '',
-            'description'    => '',
-            'scheduled_date' => '',
-            'status'         => 'planned',
+            'maintenance_type' => '',
+            'scheduled_date'   => (new \DateTimeImmutable('today'))->format('Y-m-d'),
+            'status'           => 'planned',
+            'completed_date'   => '',
+            'notes'            => '',
         ];
 
-        $errors = [];
+        $errors = $_SESSION['errors'] ?? [];
+        unset($_SESSION['errors']);
 
         $this->view('admin/vehicles/maintenance_create', compact('vehicle', 'item', 'errors'));
     }
 
     /**
-     * Store a maintenance task.
+     * Store maintenance task.
      */
     public function maintenanceStore(int $id): void
     {
         $pdo = Database::pdo();
 
-        $stmt = $pdo->prepare("SELECT * FROM vehicles WHERE id = ?");
-        $stmt->execute([$id]);
-        $vehicle = $stmt->fetch(PDO::FETCH_ASSOC);
-
+        $vehicle = Vehicle::find($id);
         if (!$vehicle) {
             http_response_code(404);
             echo "Vehicle not found.";
             return;
         }
 
-        $title         = trim($_POST['title'] ?? '');
-        $description   = trim($_POST['description'] ?? '');
-        $scheduledDate = trim($_POST['scheduled_date'] ?? '');
-        $status        = trim($_POST['status'] ?? 'planned');
+        $maintenanceType = trim($_POST['maintenance_type'] ?? '');
+        $scheduledDate   = trim($_POST['scheduled_date'] ?? '');
+        $status          = trim($_POST['status'] ?? 'planned');
+        $completedDate   = trim($_POST['completed_date'] ?? '');
+        $notes           = trim($_POST['notes'] ?? '');
 
+        $allowedStatus = ['planned','in_progress','completed','cancelled'];
         $errors = [];
 
-        if ($title === '') {
-            $errors[] = "Title is required.";
-        }
+        if ($maintenanceType === '') $errors[] = 'Maintenance type is required.';
+        if ($scheduledDate === '') $errors[] = 'Scheduled date is required.';
+        if (!in_array($status, $allowedStatus, true)) $errors[] = 'Invalid status.';
 
-        if ($scheduledDate === '') {
-            $errors[] = "Scheduled date is required.";
-        } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $scheduledDate)) {
-            $errors[] = "Scheduled date must be YYYY-MM-DD.";
+        if ($status === 'completed' && $completedDate === '') {
+            $completedDate = (new \DateTimeImmutable('today'))->format('Y-m-d');
+        }
+        if ($status !== 'completed') {
+            $completedDate = '';
         }
 
         if (!empty($errors)) {
-            $item = [
-                'title'          => $title,
-                'description'    => $description,
-                'scheduled_date' => $scheduledDate,
-                'status'         => $status,
-            ];
-
-            $this->view('admin/vehicles/maintenance_create', compact('vehicle', 'item', 'errors'));
-            return;
+            $_SESSION['errors'] = $errors;
+            $this->redirect("/admin/vehicles/{$id}/maintenance/create");
         }
 
         $stmt = $pdo->prepare("
-            INSERT INTO vehicle_maintenance (
-                vehicle_id,
-                title,
-                description,
-                scheduled_date,
-                status,
-                created_by,
-                created_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, NOW())
+            INSERT INTO vehicle_maintenance
+                (vehicle_id, maintenance_type, status, scheduled_date, completed_date, notes)
+            VALUES
+                (?, ?, ?, ?, ?, ?)
         ");
-
         $stmt->execute([
-            $vehicle['id'],
-            $title,
-            $description,
-            $scheduledDate,
+            $id,
+            $maintenanceType,
             $status,
-            $_SESSION['user_id'] ?? 1,
+            $scheduledDate,
+            ($completedDate !== '' ? $completedDate : null),
+            ($notes !== '' ? $notes : null),
         ]);
 
-        header("Location: /admin/vehicles/{$vehicle['id']}/maintenance");
-        exit;
+        $_SESSION['success'] = 'Maintenance item created.';
+        $this->redirect("/admin/vehicles/{$id}/maintenance");
+    }
+
+    public function maintenanceComplete($id, $maintenanceId): void
+    {
+        $pdo = Database::pdo();
+        $id = (int)$id;
+        $maintenanceId = (int)$maintenanceId;
+
+        $stmt = $pdo->prepare("
+            UPDATE vehicle_maintenance
+            SET status = 'completed',
+                completed_date = COALESCE(completed_date, CURDATE())
+            WHERE id = ?
+              AND vehicle_id = ?
+              AND status IN ('planned','in_progress')
+        ");
+        $stmt->execute([$maintenanceId, $id]);
+
+        $_SESSION['success'] = 'Maintenance marked as completed.';
+        $this->redirect("/admin/vehicles/{$id}/maintenance");
+    }
+
+    public function maintenanceDelete($id, $maintenanceId): void
+    {
+        $pdo = Database::pdo();
+        $id = (int)$id;
+        $maintenanceId = (int)$maintenanceId;
+
+        $stmt = $pdo->prepare("
+            DELETE FROM vehicle_maintenance
+            WHERE id = ?
+              AND vehicle_id = ?
+        ");
+        $stmt->execute([$maintenanceId, $id]);
+
+        $_SESSION['success'] = 'Maintenance item deleted.';
+        $this->redirect("/admin/vehicles/{$id}/maintenance");
     }
 }

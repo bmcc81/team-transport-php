@@ -10,7 +10,7 @@ require __DIR__ . '/../geofences/_create_modal.php';
             <?php require __DIR__ . '/../layout/sidebar.php'; ?>
         </div>
 
-        <main class="col-md-9 col-lg-10">
+        <div class="col-md-9 col-lg-10">
             <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                 <div>
                     <h2 class="h4 mb-0">Live Fleet Map</h2>
@@ -168,7 +168,7 @@ require __DIR__ . '/../geofences/_create_modal.php';
 
                 </div> <!-- /sidebar -->
             </div>
-        </main>
+        </div>
     </div>
 </div>
 
@@ -219,33 +219,25 @@ require __DIR__ . '/../geofences/_create_modal.php';
     </div>
 </div>
 
-<?php require __DIR__ . '/../../layout/footer.php'; ?>
-
-<!-- Leaflet + plugins -->
+<?php
+$pageScripts = '
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- Leaflet Draw -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
-<!-- Marker clustering -->
-<link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
-/>
-<link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
-/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
-<!-- Heatmap -->
-<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="/assets/vendor/leaflet-heat/leaflet-heat.js?v=1"></script>
+
 <script>
-    window.GEOFENCES = <?= json_encode(
-    $geofences,
-    JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR) ?>;
-    window.INITIAL_CENTER = [45.50, -73.57]; // optional
+window.GEOFENCES = ' . json_encode($geofences, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . ';
 </script>
-<script src="/assets/js/maps.js?v=1"></script>
+
+<script src="/assets/js/maps.js?v=3"></script>
+';
+
+require __DIR__ . '/../../layout/footer.php';
