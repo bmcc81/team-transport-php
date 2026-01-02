@@ -328,7 +328,7 @@ class LoadController extends Controller
     /**
      * POST /loads/update (dispatcher/admin only)
      */
-    public function update(): void
+   public function update(): void
     {
         if (!$this->canManage()) {
             $this->forbid('Drivers cannot update loads.');
@@ -341,16 +341,57 @@ class LoadController extends Controller
             return;
         }
 
-        $pdo  = Database::pdo();
-        $uid  = $this->currentUserId();
+        $pdo = Database::pdo();
+        $uid = $this->currentUserId();
         $data = $_POST;
 
-        $assignedDriverId = !empty($data['driver_id'] ?? null) ? (int)$data['driver_id'] : null;
+        // ---- Detect which columns exist (pickup_date vs pickup_datetime, etc.)
+        $columns = [];
+        $types   = [];
+        $rows = $pdo->query("DESCRIBE loads")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        foreach ($rows as $col) {
+            $name = (string)($col['Field'] ?? '');
+            if ($name === '') continue;
+            $columns[$name] = true;
+            $types[$name] = strtolower((string)($col['Type'] ?? ''));
+        }
 
-        $data['assigned_driver_id'] = $assignedDriverId;
-        $data['load_status']        = $data['load_status'] ?? 'pending';
-        $data['rate_currency']      = $data['rate_currency'] ?? 'CAD';
+        $pickupCol   = isset($columns['pickup_datetime']) ? 'pickup_datetime' : 'pickup_date';
+        $deliveryCol = isset($columns['delivery_datetime']) ? 'delivery_datetime' : 'delivery_date';
 
+        $formatForColumn = function (string $raw, string $colName) use ($types): ?string {
+            $raw = trim($raw);
+            if ($raw === '') return null;
+
+            $ts = strtotime($raw); // supports YYYY-MM-DDTHH:MM and YYYY-MM-DD HH:MM:SS
+            if (!$ts) return null;
+
+            $t = $types[$colName] ?? '';
+            // DATE only
+            if (str_contains($t, 'date') && !str_contains($t, 'datetime') && !str_contains($t, 'timestamp')) {
+                return date('Y-m-d', $ts);
+            }
+            // DATETIME/TIMESTAMP
+            return date('Y-m-d H:i:s', $ts);
+        };
+
+        // ---- Normalize field names from your form
+        // Your view uses assigned_driver_id, but you previously used driver_id in controller.
+        $assignedDriverId = (int)($data['assigned_driver_id'] ?? ($data['driver_id'] ?? 0));
+        $data['assigned_driver_id'] = $assignedDriverId > 0 ? $assignedDriverId : null;
+
+        $data['load_status']   = $data['load_status'] ?? 'pending';
+        $data['rate_currency'] = $data['rate_currency'] ?? 'CAD';
+
+        // Accept datetime-local inputs (preferred), fallback to legacy date fields
+        $pickupRaw   = trim((string)($data['pickup_datetime'] ?? ($data['pickup_date'] ?? '')));
+        $deliveryRaw = trim((string)($data['delivery_datetime'] ?? ($data['delivery_date'] ?? '')));
+
+        // Map them into the legacy keys too, in case validateLoadInput() expects pickup_date/delivery_date
+        $data['pickup_date']   = $pickupRaw;
+        $data['delivery_date'] = $deliveryRaw;
+
+        // ---- Validate
         $errors = $this->validateLoadInput($data);
         if ($errors) {
             $_SESSION['error'] = implode(' ', $errors);
@@ -358,10 +399,19 @@ class LoadController extends Controller
             return;
         }
 
-        $pdo->beginTransaction();
+        // ---- Format dates for DB column type
+        $pickupDb   = $formatForColumn($pickupRaw, $pickupCol);
+        $deliveryDb = $formatForColumn($deliveryRaw, $deliveryCol);
 
+        if ($pickupDb === null || $deliveryDb === null) {
+            $_SESSION['error'] = 'Invalid pickup or delivery date/time.';
+            $this->redirect('/loads/edit?id=' . $id);
+            return;
+        }
+
+        $pdo->beginTransaction();
         try {
-            $stmt = $pdo->prepare("
+            $sql = "
                 UPDATE loads
                 SET
                     customer_id           = :customer_id,
@@ -373,13 +423,13 @@ class LoadController extends Controller
                     pickup_address        = :pickup_address,
                     pickup_city           = :pickup_city,
                     pickup_postal_code    = :pickup_postal_code,
-                    pickup_date           = :pickup_date,
+                    {$pickupCol}          = :pickup_dt,
 
                     delivery_contact_name = :delivery_contact_name,
                     delivery_address      = :delivery_address,
                     delivery_city         = :delivery_city,
                     delivery_postal_code  = :delivery_postal_code,
-                    delivery_date         = :delivery_date,
+                    {$deliveryCol}        = :delivery_dt,
 
                     total_weight_kg       = :total_weight_kg,
                     rate_amount           = :rate_amount,
@@ -388,32 +438,33 @@ class LoadController extends Controller
                     notes                 = :notes,
                     updated_at            = NOW()
                 WHERE load_id = :id
-            ");
+            ";
 
+            $stmt = $pdo->prepare($sql);
             $stmt->execute([
-                ':customer_id'          => (int)$data['customer_id'],
-                ':assigned_driver_id'   => $data['assigned_driver_id'] ? (int)$data['assigned_driver_id'] : null,
-                ':reference_number'     => trim((string)$data['reference_number']),
-                ':description'          => $data['description'] !== '' ? $data['description'] : null,
+                ':customer_id'           => (int)($data['customer_id'] ?? 0),
+                ':assigned_driver_id'    => $data['assigned_driver_id'] ? (int)$data['assigned_driver_id'] : null,
+                ':reference_number'      => trim((string)($data['reference_number'] ?? '')),
+                ':description'           => trim((string)($data['description'] ?? '')) !== '' ? trim((string)$data['description']) : null,
 
-                ':pickup_contact_name'  => $data['pickup_contact_name'] !== '' ? $data['pickup_contact_name'] : null,
-                ':pickup_address'       => trim((string)$data['pickup_address']),
-                ':pickup_city'          => trim((string)$data['pickup_city']),
-                ':pickup_postal_code'   => $data['pickup_postal_code'] !== '' ? $data['pickup_postal_code'] : null,
-                ':pickup_date'          => $data['pickup_date'],
+                ':pickup_contact_name'   => trim((string)($data['pickup_contact_name'] ?? '')) !== '' ? trim((string)$data['pickup_contact_name']) : null,
+                ':pickup_address'        => trim((string)($data['pickup_address'] ?? '')),
+                ':pickup_city'           => trim((string)($data['pickup_city'] ?? '')),
+                ':pickup_postal_code'    => trim((string)($data['pickup_postal_code'] ?? '')) !== '' ? trim((string)$data['pickup_postal_code']) : null,
+                ':pickup_dt'             => $pickupDb,
 
-                ':delivery_contact_name'=> $data['delivery_contact_name'] !== '' ? $data['delivery_contact_name'] : null,
-                ':delivery_address'     => trim((string)$data['delivery_address']),
-                ':delivery_city'        => trim((string)$data['delivery_city']),
-                ':delivery_postal_code' => $data['delivery_postal_code'] !== '' ? $data['delivery_postal_code'] : null,
-                ':delivery_date'        => $data['delivery_date'],
+                ':delivery_contact_name' => trim((string)($data['delivery_contact_name'] ?? '')) !== '' ? trim((string)$data['delivery_contact_name']) : null,
+                ':delivery_address'      => trim((string)($data['delivery_address'] ?? '')),
+                ':delivery_city'         => trim((string)($data['delivery_city'] ?? '')),
+                ':delivery_postal_code'  => trim((string)($data['delivery_postal_code'] ?? '')) !== '' ? trim((string)$data['delivery_postal_code']) : null,
+                ':delivery_dt'           => $deliveryDb,
 
-                ':total_weight_kg'      => ($data['total_weight_kg'] ?? '') !== '' ? (float)$data['total_weight_kg'] : null,
-                ':rate_amount'          => ($data['rate_amount'] ?? '') !== '' ? (float)$data['rate_amount'] : null,
-                ':rate_currency'        => $data['rate_currency'] ?: 'CAD',
-                ':load_status'          => $data['load_status'],
-                ':notes'                => $data['notes'] ?? null,
-                ':id'                   => $id,
+                ':total_weight_kg'       => ($data['total_weight_kg'] ?? '') !== '' ? (float)$data['total_weight_kg'] : null,
+                ':rate_amount'           => ($data['rate_amount'] ?? '') !== '' ? (float)$data['rate_amount'] : null,
+                ':rate_currency'         => trim((string)($data['rate_currency'] ?? 'CAD')) !== '' ? trim((string)$data['rate_currency']) : 'CAD',
+                ':load_status'           => (string)$data['load_status'],
+                ':notes'                 => trim((string)($data['notes'] ?? '')) !== '' ? trim((string)$data['notes']) : null,
+                ':id'                    => $id,
             ]);
 
             // Optional PDF upload on edit
@@ -427,7 +478,7 @@ class LoadController extends Controller
             $pdo->rollBack();
             throw $e;
         }
-    }
+    }   
 
     /**
      * POST /loads/status

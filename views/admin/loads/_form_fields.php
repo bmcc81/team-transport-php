@@ -12,6 +12,26 @@
 $isEdit = isset($load) && is_array($load);
 $old    = $load ?? [];
 
+
+if (!function_exists('old_val')) {
+    function old_val(array $src, string $key, $default = '')
+    {
+        return isset($src[$key]) ? $src[$key] : $default;
+    }
+}
+
+if (!function_exists('dt_local')) {
+    // Converts "YYYY-MM-DD HH:MM:SS" (MySQL) or "YYYY-MM-DDTHH:MM" into "YYYY-MM-DDTHH:MM" for <input datetime-local>
+    function dt_local($value): string
+    {
+        $value = trim((string)$value);
+        if ($value === '') return '';
+        $ts = strtotime($value);
+        if (!$ts) return '';
+        return date('Y-m-d\TH:i', $ts);
+    }
+}
+
 function old_val(array $src, string $key, $default = '')
 {
     return isset($src[$key]) ? $src[$key] : $default;
