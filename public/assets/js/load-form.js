@@ -7,7 +7,7 @@ $(function () {
     });
 
     // Auto-filter vehicles by selected driver
-    $("select[name='driver_id']").on("change", function () {
+    $("select[name='assigned_driver_id']").on("change", function () {
         const driver = $(this).val();
         $("#vehicle-select option").each(function () {
             const vDriver = $(this).data("driver");
@@ -20,5 +20,6 @@ $(function () {
 
         $("#vehicle-select").val("").trigger("change");
     });
+
 
 });

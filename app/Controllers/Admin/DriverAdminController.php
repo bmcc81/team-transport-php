@@ -26,7 +26,7 @@ class DriverAdminController extends Controller
             ORDER BY u.full_name ASC
         ");
 
-        $drivers = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $drivers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $this->view('admin/drivers/index', [
             'drivers' => $drivers
@@ -98,7 +98,7 @@ class DriverAdminController extends Controller
         ");
 
         $stmt->execute([$id]);
-        $driver = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $driver = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$driver) {
             http_response_code(404);
@@ -171,7 +171,7 @@ class DriverAdminController extends Controller
             WHERE id = ? AND role = 'driver'
         ");
         $stmt->execute([$driverId]);
-        $driver = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $driver = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$driver) {
             http_response_code(404);
@@ -252,7 +252,7 @@ class DriverAdminController extends Controller
             WHERE v.id = ?
         ");
         $stmt->execute([$vehicleId]);
-        $vehicle = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $vehicle = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$vehicle) {
             $_SESSION['errors'][] = 'Selected vehicle does not exist.';

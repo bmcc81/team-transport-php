@@ -20,7 +20,7 @@ require __DIR__ . '/../geofences/_create_modal.php';
                 </div>
 
                 <div class="d-flex flex-wrap align-items-center gap-2">
-                    <span id="ws-status-pill" class="badge text-bg-secondary connection-pill">
+                    <span id="ws-status-pill" title="Web Socket" class="badge text-bg-secondary connection-pill">
                         WS: Connecting…
                     </span>
                     <button id="btn-fit-all" class="btn btn-outline-secondary btn-sm">
@@ -238,6 +238,7 @@ window.GEOFENCES = ' . json_encode($geofences, JSON_UNESCAPED_SLASHES | JSON_HEX
 </script>
 
 <script src="/assets/js/maps.js?v=3"></script>
+<link rel="stylesheet" href="/assets/css/maps.css">
 ';
 
 require __DIR__ . '/../../layout/footer.php';
