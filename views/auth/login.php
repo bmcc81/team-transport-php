@@ -37,7 +37,7 @@
         </div>
 
         <p class="text-center mt-3 small text-muted">
-            Demo: admin / admin123, bmcc81 / bmcc81123
+            Demo: admin / admin123, bmcc81 / bmcc81123, driver1 / driver1123, driver2 / driver2123, driver3 / driver3123, driver4 / driver4123, driver5 / driver5123, driver6 / driver6123, driver7 / driver7123, driver8 / driver8123, driver9 / driver9123, driver10 / driver101123, driver11 / driver11123, driver12 / driver12123, driver13 / driver13123, driver14 / driver14123, driver15 / driver15123, driver16 / driver16123, dispatcher1 / dispatcher1123, dispatcher2 / dispatcher2123
         </p>
     </div>
 </div>

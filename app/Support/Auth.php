@@ -27,7 +27,7 @@ final class Auth
             WHERE email = :id OR username = :id
             LIMIT 1
         ");
-        $stmt->execute([':id' => $identifier]);
+        $stmt->execute(['id' => $identifier]); // <- no colon
 
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$user) {
