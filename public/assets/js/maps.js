@@ -777,6 +777,6 @@
       }
     };
   }
-
+  (window.__BOOTSTRAP_TELEMETRY__ || []).forEach(handleTelemetryUpdate);
   connectWS();
 })();
