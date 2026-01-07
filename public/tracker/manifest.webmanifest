@@ -1,0 +1,9 @@
+{
+  "name": "TeamTransport Tracker",
+  "short_name": "TT Tracker",
+  "start_url": "/tracker/",
+  "display": "standalone",
+  "background_color": "#f7f7fb",
+  "theme_color": "#0d6efd",
+  "icons": []
+}
