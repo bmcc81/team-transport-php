@@ -6,131 +6,162 @@ namespace App\Services;
 
 use App\Database\Database;
 use PDO;
+use DateTimeImmutable;
+use DateTimeZone;
 
 final class TelemetryService
 {
     /**
-     * Latest GPS point per vehicle (one row per vehicle).
-     * Returns: vehicle_id, lat, lng, speed_kph, heading_deg, source, recorded_at
+     * Returns one row per vehicle from telemetry_latest.
+     * Output includes both DB-native keys (lat/lng/speed_kph/heading/recorded_at)
+     * and WS/frontend-friendly aliases (latitude/longitude/speed/heading_deg/timestamp).
      */
     public static function latestForAll(): array
     {
         $pdo = Database::pdo();
 
-        // Latest row per vehicle_id using a derived table on MAX(recorded_at)
         $sql = "
-            SELECT g.*
-            FROM vehicle_gps g
-            INNER JOIN (
-                SELECT vehicle_id, MAX(recorded_at) AS max_recorded_at
-                FROM vehicle_gps
-                GROUP BY vehicle_id
-            ) x
-              ON x.vehicle_id = g.vehicle_id
-             AND x.max_recorded_at = g.recorded_at
-            ORDER BY g.vehicle_id ASC
+            SELECT vehicle_id, recorded_at, lat, lng, speed_kph, heading
+            FROM telemetry_latest
+            ORDER BY vehicle_id
         ";
 
-        return $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        return array_map([self::class, 'normalizeRow'], $rows);
     }
 
     /**
-     * Latest GPS point for a single vehicle.
-     */
-    public static function latestForVehicle(int $vehicleId): ?array
-    {
-        $pdo = Database::pdo();
-
-        $stmt = $pdo->prepare("
-            SELECT *
-            FROM vehicle_gps
-            WHERE vehicle_id = :vehicle_id
-            ORDER BY recorded_at DESC
-            LIMIT 1
-        ");
-        $stmt->execute(['vehicle_id' => $vehicleId]);
-
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $row ?: null;
-    }
-
-    /**
-     * History for a vehicle.
-     * If $limit is provided, returns most recent N points (descending).
-     * If you need ascending for map trails, set $ascending=true.
+     * Telemetry history for one vehicle from telemetry_points.
      */
     public static function historyForVehicle(int $vehicleId, int $limit = 300, bool $ascending = true): array
     {
         $pdo = Database::pdo();
 
-        $order = $ascending ? "ASC" : "DESC";
-        $stmt = $pdo->prepare("
-            SELECT *
-            FROM vehicle_gps
-            WHERE vehicle_id = :vehicle_id
-            ORDER BY recorded_at {$order}
-            LIMIT :lim
-        ");
-        $stmt->bindValue(':vehicle_id', $vehicleId, PDO::PARAM_INT);
-        $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
-        $stmt->execute();
+        $limit = max(1, min(5000, $limit));
+        $order = $ascending ? 'ASC' : 'DESC';
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $sql = "
+            SELECT id, vehicle_id, recorded_at, lat, lng, speed_kph, heading
+            FROM telemetry_points
+            WHERE vehicle_id = :vid
+            ORDER BY recorded_at $order, id $order
+            LIMIT $limit
+        ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([':vid' => $vehicleId]);
+
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        return array_map([self::class, 'normalizeRow'], $rows);
     }
 
     /**
-     * Insert a new GPS point.
-     * Accepts: vehicle_id, lat, lng, speed_kph?, heading_deg?, source?
+     * Optional: if you use the PHP ingest endpoint.
+     * Inserts into telemetry_points; DB trigger will maintain telemetry_latest.
      */
     public static function ingest(array $payload): int
     {
-        $pdo = Database::pdo();
-
-        $vehicleId  = (int)($payload['vehicle_id'] ?? 0);
-        $lat        = $payload['lat'] ?? null;
-        $lng        = $payload['lng'] ?? null;
-        $speedKph   = $payload['speed_kph'] ?? null;
-        $headingDeg = $payload['heading_deg'] ?? null;
-        $source     = (string)($payload['source'] ?? 'api');
+        $vehicleId = (int)($payload['vehicle_id'] ?? 0);
+        $lat       = $payload['lat'] ?? $payload['latitude'] ?? null;
+        $lng       = $payload['lng'] ?? $payload['longitude'] ?? null;
 
         if ($vehicleId <= 0) {
-            throw new \InvalidArgumentException('vehicle_id is required.');
+            throw new \InvalidArgumentException('vehicle_id is required');
         }
         if ($lat === null || $lng === null) {
-            throw new \InvalidArgumentException('lat and lng are required.');
+            throw new \InvalidArgumentException('lat/lng are required');
         }
 
-        // Normalize/validate numbers
         $lat = (float)$lat;
         $lng = (float)$lng;
 
-        // Clamp to valid ranges (optional but recommended)
-        if ($lat < -90 || $lat > 90) {
-            throw new \InvalidArgumentException('lat out of range.');
-        }
-        if ($lng < -180 || $lng > 180) {
-            throw new \InvalidArgumentException('lng out of range.');
+        $speed = $payload['speed_kph'] ?? $payload['speed'] ?? null;
+        $heading = $payload['heading'] ?? $payload['heading_deg'] ?? null;
+
+        $speed = ($speed === null || $speed === '') ? null : (float)$speed;
+        $heading = ($heading === null || $heading === '') ? null : (float)$heading;
+
+        // If caller provides a timestamp, store it; otherwise let DB default apply.
+        $recordedAt = null;
+        $ts = $payload['timestamp'] ?? $payload['recorded_at'] ?? null;
+        if (is_string($ts) && trim($ts) !== '') {
+            try {
+                $dt = new DateTimeImmutable($ts);
+                // Store as UTC string; TIMESTAMP will store consistently.
+                $dtUtc = $dt->setTimezone(new DateTimeZone('UTC'));
+                $recordedAt = $dtUtc->format('Y-m-d H:i:s');
+            } catch (\Throwable $e) {
+                // ignore; fall back to DB default
+                $recordedAt = null;
+            }
         }
 
-        // Ensure source is valid for your ENUM
-        $allowedSources = ['manual', 'device', 'sim', 'api'];
-        if (!in_array($source, $allowedSources, true)) {
-            $source = 'api';
+        $pdo = Database::pdo();
+
+        if ($recordedAt === null) {
+            $sql = "
+                INSERT INTO telemetry_points (vehicle_id, lat, lng, speed_kph, heading, raw)
+                VALUES (:vid, :lat, :lng, :speed, :heading, :raw)
+            ";
+            $params = [
+                ':vid' => $vehicleId,
+                ':lat' => $lat,
+                ':lng' => $lng,
+                ':speed' => $speed,
+                ':heading' => $heading,
+                ':raw' => json_encode($payload, JSON_UNESCAPED_SLASHES),
+            ];
+        } else {
+            $sql = "
+                INSERT INTO telemetry_points (vehicle_id, recorded_at, lat, lng, speed_kph, heading, raw)
+                VALUES (:vid, :recorded_at, :lat, :lng, :speed, :heading, :raw)
+            ";
+            $params = [
+                ':vid' => $vehicleId,
+                ':recorded_at' => $recordedAt,
+                ':lat' => $lat,
+                ':lng' => $lng,
+                ':speed' => $speed,
+                ':heading' => $heading,
+                ':raw' => json_encode($payload, JSON_UNESCAPED_SLASHES),
+            ];
         }
 
-        $stmt = $pdo->prepare("
-            INSERT INTO vehicle_gps (vehicle_id, lat, lng, speed_kph, heading_deg, source, recorded_at)
-            VALUES (:vehicle_id, :lat, :lng, :speed_kph, :heading_deg, :source, NOW())
-        ");
-        $stmt->execute([
-            'vehicle_id'  => $vehicleId,
-            'lat'         => $lat,
-            'lng'         => $lng,
-            'speed_kph'   => ($speedKph === '' || $speedKph === null) ? null : (float)$speedKph,
-            'heading_deg' => ($headingDeg === '' || $headingDeg === null) ? null : (int)$headingDeg,
-            'source'      => $source,
-        ]);
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
 
         return (int)$pdo->lastInsertId();
+    }
+
+    private static function normalizeRow(array $r): array
+    {
+        $vehicleId = (int)($r['vehicle_id'] ?? 0);
+
+        $lat = isset($r['lat']) ? (float)$r['lat'] : null;
+        $lng = isset($r['lng']) ? (float)$r['lng'] : null;
+
+        $speed = array_key_exists('speed_kph', $r) && $r['speed_kph'] !== null ? (float)$r['speed_kph'] : null;
+        $heading = array_key_exists('heading', $r) && $r['heading'] !== null ? (float)$r['heading'] : null;
+
+        $recordedAt = $r['recorded_at'] ?? null;
+        $recordedAtStr = is_string($recordedAt) ? $recordedAt : (string)$recordedAt;
+
+        return [
+            // DB-native
+            'vehicle_id'   => $vehicleId,
+            'recorded_at'  => $recordedAtStr,
+            'lat'          => $lat,
+            'lng'          => $lng,
+            'speed_kph'    => $speed,
+            'heading'      => $heading,
+
+            // Frontend/WS-friendly aliases
+            'latitude'     => $lat,
+            'longitude'    => $lng,
+            'speed'        => $speed,
+            'heading_deg'  => $heading,
+            'timestamp'    => $recordedAtStr,
+        ];
     }
 }
