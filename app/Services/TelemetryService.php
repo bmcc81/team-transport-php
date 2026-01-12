@@ -21,15 +21,27 @@ final class TelemetryService
         $pdo = Database::pdo();
 
         $sql = "
-            SELECT vehicle_id, recorded_at, lat, lng, speed_kph, heading
-            FROM telemetry_latest
-            ORDER BY vehicle_id
+            SELECT
+                v.id AS vehicle_id,
+
+                -- Latest telemetry (nullable if none yet)
+                t.recorded_at,
+                t.lat,
+                t.lng,
+                t.speed_kph,
+                t.heading
+
+            FROM vehicles v
+            LEFT JOIN telemetry_latest t
+            ON t.vehicle_id = v.id
+            ORDER BY v.id
         ";
 
         $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         return array_map([self::class, 'normalizeRow'], $rows);
     }
+
 
     /**
      * Telemetry history for one vehicle from telemetry_points.
@@ -41,20 +53,26 @@ final class TelemetryService
         $limit = max(1, min(5000, $limit));
         $order = $ascending ? 'ASC' : 'DESC';
 
-        $sql = "
-            SELECT id, vehicle_id, recorded_at, lat, lng, speed_kph, heading
+        $stmt = $pdo->prepare("
+            SELECT
+                vehicle_id,
+                recorded_at,
+                lat,
+                lng,
+                speed_kph,
+                heading
             FROM telemetry_points
             WHERE vehicle_id = :vid
             ORDER BY recorded_at $order, id $order
             LIMIT $limit
-        ";
+        ");
 
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([':vid' => $vehicleId]);
-
+        $stmt->execute(['vid' => $vehicleId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
         return array_map([self::class, 'normalizeRow'], $rows);
     }
+
 
     /**
      * Optional: if you use the PHP ingest endpoint.
@@ -148,7 +166,16 @@ final class TelemetryService
         $recordedAtStr = is_string($recordedAt) ? $recordedAt : (string)$recordedAt;
 
         return [
-            // DB-native
+            // Vehicle metadata (optional)
+            'vehicle_number'     => $r['vehicle_number'] ?? null,
+            'license_plate'      => $r['license_plate'] ?? null,
+            'make'               => $r['make'] ?? null,
+            'model'              => $r['model'] ?? null,
+            'year'               => isset($r['year']) ? (int)$r['year'] : null,
+            'status'             => $r['status'] ?? null,
+            'assigned_driver_id' => isset($r['assigned_driver_id']) ? (int)$r['assigned_driver_id'] : null,
+
+            // DB-native + aliases (your existing block)
             'vehicle_id'   => $vehicleId,
             'recorded_at'  => $recordedAtStr,
             'lat'          => $lat,
@@ -156,7 +183,6 @@ final class TelemetryService
             'speed_kph'    => $speed,
             'heading'      => $heading,
 
-            // Frontend/WS-friendly aliases
             'latitude'     => $lat,
             'longitude'    => $lng,
             'speed'        => $speed,
