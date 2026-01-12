@@ -238,7 +238,8 @@ window.GEOFENCES = ' . json_encode($geofences, JSON_UNESCAPED_SLASHES | JSON_HEX
 </script>
 
 <script>
-  window.__BOOTSTRAP_TELEMETRY__ = <?= json_encode($vehicles, JSON_UNESCAPED_SLASHES) ?>;
+    window.__BOOTSTRAP_TELEMETRY__ = <?= json_encode($vehicles ?? [], JSON_UNESCAPED_SLASHES) ?>;
+    window.GEOFENCES = <?= json_encode($geofences ?? [], JSON_UNESCAPED_SLASHES) ?>;
 </script>
 
 <script src="/assets/js/maps.js?v=3"></script>

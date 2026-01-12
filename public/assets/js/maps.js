@@ -460,26 +460,55 @@
   let activeModalVehicleId = null;
   let followVehicleId = null;
 
-  function handleTelemetryUpdate(data) {
-    const { vehicle_id, latitude, longitude, speed, heading, timestamp } = data || {};
-    if (vehicle_id === undefined || latitude === undefined || longitude === undefined) return;
+  function parseTimestamp(ts) {
+  const s = String(ts || "").trim();
+  if (!s) return new Date();
 
-    const id = String(vehicle_id);
-    const lat = Number(latitude);
-    const lng = Number(longitude);
+  // If it's already ISO-ish (has T or timezone), let Date parse it.
+  if (s.includes("T") || s.endsWith("Z") || /[+-]\d{2}:?\d{2}$/.test(s)) {
+    return new Date(s);
+  }
+
+  // MariaDB often returns "YYYY-MM-DD HH:MM:SS"
+  // Treat as UTC by appending Z after converting space->T
+  return new Date(s.replace(" ", "T") + "Z");
+}
+
+function handleTelemetryUpdate(data) {
+    if (!data) return;
+
+    // Accept both WS payload and DB bootstrapped payload
+    const vid = data.vehicle_id;
+
+    const latRaw = (data.latitude ?? data.lat);
+    const lngRaw = (data.longitude ?? data.lng);
+
+    // IMPORTANT: skip nulls (LEFT JOIN vehicles with no telemetry yet)
+    if (vid === undefined || latRaw === null || latRaw === undefined || lngRaw === null || lngRaw === undefined) {
+      return;
+    }
+
+    const lat = Number(latRaw);
+    const lng = Number(lngRaw);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
-    const spd = Number(speed) || 0;
+    const spdRaw = (data.speed ?? data.speed_kph ?? 0);
+    const spd = Number(spdRaw) || 0;
+
+    const headingRaw = (data.heading ?? data.heading_deg);
+    const headingNum = (headingRaw === null || headingRaw === undefined || headingRaw === "")
+      ? null
+      : Number(headingRaw);
+    const hdg = Number.isFinite(headingNum) ? headingNum : null;
+
+    const id = String(vid);
     const latlng = [lat, lng];
 
-    const tsDate = new Date(String(timestamp || "").replace(" ", "T") + "Z");
+    const tsStr = String(data.timestamp ?? data.recorded_at ?? "");
+    const tsDate = parseTimestamp(tsStr);
+
     if (!telemetryHistory[id]) telemetryHistory[id] = [];
-    telemetryHistory[id].push({
-      lat, lng,
-      speed: spd,
-      heading: (typeof heading === "number") ? heading : null,
-      tsDate
-    });
+    telemetryHistory[id].push({ lat, lng, speed: spd, heading: hdg, tsDate });
     if (telemetryHistory[id].length > MAX_TRAIL_POINTS) telemetryHistory[id].shift();
 
     // marker
@@ -524,7 +553,7 @@
       heatLayer.setLatLngs(heatPoints);
     }
 
-    updateVehicleRow(id, latlng, spd, String(timestamp || ""));
+    updateVehicleRow(id, latlng, spd, tsStr || tsDate.toISOString());
     if (lastUpdateLabel) lastUpdateLabel.textContent = new Date().toISOString().slice(11, 19) + " UTC";
 
     checkGeofences(id, L.latLng(lat, lng));

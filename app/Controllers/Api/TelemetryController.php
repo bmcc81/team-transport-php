@@ -15,8 +15,9 @@ final class TelemetryController extends Controller
      */
     public function liveMap(): void
     {
-        $vehicles = TelemetryService::latestForAll();
-        $this->view('admin/vehicles/map', compact('vehicles'));
+        $vehicles  = TelemetryService::latestForAll();
+        $geofences = []; // stop warnings until you wire it properly
+        $this->view('admin/vehicles/map', compact('vehicles', 'geofences'));
     }
 
     /**
