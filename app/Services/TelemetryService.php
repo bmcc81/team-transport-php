@@ -42,7 +42,6 @@ final class TelemetryService
         return array_map([self::class, 'normalizeRow'], $rows);
     }
 
-
     /**
      * Telemetry history for one vehicle from telemetry_points.
      */
